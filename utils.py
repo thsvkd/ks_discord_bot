@@ -1,0 +1,17 @@
+import discord
+from discord.ext import commands
+
+
+class CustomHelpCommand(commands.HelpCommand):
+    async def send_bot_help(self, mapping):
+        help_embed = discord.Embed(title="Help", description="List of commands", color=discord.Color.blue())
+        for cog, command_list in mapping.items():
+            command_details = ""
+            for command in command_list:
+                if not command.hidden:
+                    command_details += f"{command.name}: {command.help or 'No description'}\n"
+            if command_details:
+                help_embed.add_field(
+                    name=cog.qualified_name if cog else "No Category", value=command_details, inline=False
+                )
+        await self.context.send(embed=help_embed)
