@@ -3,7 +3,7 @@ import asyncio
 from discord.ext import commands
 
 
-async def confirm(bot: commands.Bot, ctx: commands.Context, msg: discord.Message, time: int = 30):
+async def confirm(bot: commands.Bot, ctx: commands.Context, msg: discord.Message, time: int = 30) -> bool:
     """
     해당 액션을 할지 확인하는 코루틴 함수입니다.
     :param ctx: 명령어 컨택스트

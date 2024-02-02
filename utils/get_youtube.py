@@ -8,7 +8,7 @@ before_args = "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
 loop = asyncio.get_event_loop()
 
 
-async def get_youtube(url: str):
+async def get_youtube(url: str) -> dict:
     if is_valid_url(url):
         return await loop.run_in_executor(None, _get_youtube, url)
     else:
@@ -16,7 +16,7 @@ async def get_youtube(url: str):
         return await loop.run_in_executor(None, _get_youtube, url)
 
 
-def _get_youtube(url: str):
+def _get_youtube(url: str) -> dict:
     yt = YouTube(url)
     if not bool(
         url.startswith("https://")
@@ -39,7 +39,7 @@ def _get_youtube(url: str):
     return info
 
 
-def search_youtube(query: str, max_results=1):
+def search_youtube(query: str, max_results=1) -> str:
     try:
         videos_search = VideosSearch(query, limit=max_results)
 
@@ -54,7 +54,7 @@ def search_youtube(query: str, max_results=1):
         return None
 
 
-def is_valid_url(input_string):
+def is_valid_url(input_string) -> bool:
     try:
         result = urlparse(input_string)
         return all([result.scheme, result.netloc])

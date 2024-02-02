@@ -19,7 +19,7 @@ class User(commands.Cog):
         await ctx.send(f"{nickname} 님이 차단되었습니다.")
 
     @commands.command(aliases=['해제'])
-    async def unban_user(self, ctx, nickname: str):
+    async def unban_user(self, ctx: commands.Context, nickname: str):
         ban_entry = await ctx.guild.bans()
         for users in ban_entry:
             if nickname == users.user.name:

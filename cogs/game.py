@@ -1,13 +1,15 @@
 import random
 import os
+from typing import List
 
+from discord import Member
 from discord.ext import commands
 from discord.ext.commands import MissingRequiredArgument
 
 from module.ksbot import KSBot
 
 
-async def make_dir(directory_name):
+async def make_dir(directory_name: str):
     try:
         if not os.path.exists(directory_name):
             os.makedirs(directory_name)
@@ -15,7 +17,7 @@ async def make_dir(directory_name):
         print('Error: makedirs()')
 
 
-async def add_result(directory_name, user_name, result):
+async def add_result(directory_name: str, user_name: str, result: str):
     file_path = directory_name + '/' + user_name + '.txt'
     if os.path.exists(file_path):
         with open(file_path, 'a', encoding='UTF-8') as f:
@@ -30,19 +32,19 @@ class Game(commands.Cog):
         self.bot = bot
 
     @commands.command()
-    async def dice(self, ctx):
+    async def dice(self, ctx: commands.Context):
         randnum = random.randint(1, 6)
         await ctx.send(f'주사위 결과는 {randnum} 입니다.')
 
     @commands.command()
-    async def mining(self, ctx):
+    async def mining(self, ctx: commands.Context):
         minerals = ['다이아몬드', '루비', '에메랄드', '자수정', '철', '석탄']
         weights = [1, 3, 6, 15, 25, 50]
         results = random.choices(minerals, weights=weights, k=5)
         await ctx.send(', '.join(results) + ' 광물들을 획득하였습니다.')
 
     @commands.command()
-    async def game(self, ctx, user: str):
+    async def game(self, ctx: commands.Context, user: str):
         rps_table = ['가위', '바위', '보']
         bot = random.choice(rps_table)
         result = rps_table.index(user) - rps_table.index(bot)
@@ -60,13 +62,8 @@ class Game(commands.Cog):
         await make_dir(directory_name)
         await add_result(directory_name, str(ctx.author), result_text + '\n')
 
-    @game.error  # @<명령어>.error의 형태로 된 데코레이터를 사용한다.
-    async def game_error(self, ctx, error):  # 파라미터에 ctx, error를 필수로 한다.
-        if isinstance(error, MissingRequiredArgument):  # isinstance로 에러에 따라 시킬 작업을 결정한다.
-            await ctx.send("가위/바위/보 중 낼 것을 입력해주세요.")
-
     @commands.command(name="전적")
-    async def game_board(self, ctx):
+    async def game_board(self, ctx: commands.Context):
         user_name = str(ctx.author)
         file_path = "game_result/" + user_name + ".txt"
         if os.path.exists(file_path):

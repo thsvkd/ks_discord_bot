@@ -3,7 +3,9 @@ import asyncio
 from discord.ext import commands
 
 
-async def start_page(bot: commands.Bot, ctx: commands.Context, lists: list, time: int = 30, embed: bool = False):
+async def start_page(
+    bot: commands.Bot, ctx: commands.Context, lists: list, time: int = 30, embed: bool = False
+) -> None:
     """
     페이지 기능 코루틴 함수입니다.
     :param bot: 디스코드 봇

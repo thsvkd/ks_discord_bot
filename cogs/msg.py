@@ -1,9 +1,7 @@
 import asyncio
-
 import discord
 from discord.ext import commands
 from discord.ext.commands import BadArgument
-
 from module.ksbot import KSBot
 
 
@@ -11,27 +9,27 @@ class Msg(commands.Cog):
     def __init__(self, bot: KSBot):
         self.bot: discord.AutoShardedClient = bot
 
-    @commands.Cog.listener('on_raw_reaction_add')  # @bot.event()가 Cog.listener로 변경됨
-    async def remove_thumbsdown(self, payload):  # 그에 따라 함수 이름도 알맞게 변경
-        banned_emoji = "👎"
-        author = payload.user_id
-        channel = await self.bot.fetch_channel(payload.channel_id)  # bot이 self.bot으로 변경됨
-        message = await channel.fetch_message(payload.message_id)
-        if payload.emoji.name == banned_emoji and author != self.bot.user.id:  # bot이 self.bot으로
+    @commands.Cog.listener('on_raw_reaction_add')
+    async def remove_thumbsdown(self, payload: discord.RawReactionActionEvent):
+        banned_emoji: str = "👎"
+        author: int = payload.user_id
+        channel: discord.TextChannel = await self.bot.fetch_channel(payload.channel_id)
+        message: discord.Message = await channel.fetch_message(payload.message_id)
+        if payload.emoji.name == banned_emoji and author != self.bot.user.id:
             await message.clear_reaction(banned_emoji)
 
     @commands.command(name="숫자")
-    async def num_echo(self, ctx, user: int):
+    async def num_echo(self, ctx: commands.Context, user: int):
         await ctx.send(f"입력한 숫자는 {user}입니다.")
 
     @num_echo.error
-    async def num_echo_error(self, ctx, error):
+    async def num_echo_error(self, ctx: commands.Context, error):
         if isinstance(error, BadArgument):
             await ctx.send("정수를 입력 해주세요")
 
     @commands.command()
-    async def embed(self, ctx):
-        embed = discord.Embed(title="Embed title", description="Embed description", color=0x36CCF2)
+    async def embed(self, ctx: commands.Context):
+        embed: discord.Embed = discord.Embed(title="Embed title", description="Embed description", color=0x36CCF2)
         embed.set_thumbnail(url="https://cdn.discordapp.com/attachments/721307978455580742/762760779409129513/img.png")
         embed.set_image(url="https://cdn.discordapp.com/attachments/721307978455580742/762760779409129513/img.png")
         embed.add_field(name="field_name1", value="field value1", inline=False)
@@ -51,29 +49,29 @@ class Msg(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(aliases=['삭제'])
-    async def delete_msg(self, ctx):
-        msg = await ctx.send("3초 뒤에 삭제 됩니다!")
+    async def delete_msg(self, ctx: commands.Context):
+        msg: discord.Message = await ctx.send("3초 뒤에 삭제 됩니다!")
         await msg.delete(delay=3)
 
     @commands.command(aliases=['수정'])
-    async def edit_msg(self, ctx):
-        msg = await ctx.send("곧 수정 됩니다!")
+    async def edit_msg(self, ctx: commands.Context):
+        msg: discord.Message = await ctx.send("곧 수정 됩니다!")
         await msg.edit(content="수정 되었습니다!")
 
     @commands.command(name="따봉")
-    async def reaction(self, ctx):
+    async def reaction(self, ctx: commands.Context):
         await ctx.message.add_reaction('👍')
 
     @commands.command(name="기다리기")
-    async def wait(self, ctx):
-        timeout = 5
-        send_message = await ctx.send(f'{timeout}초간 기다립니다!')
+    async def wait(self, ctx: commands.Context):
+        timeout: int = 5
+        send_message: discord.Message = await ctx.send(f'{timeout}초간 기다립니다!')
 
-        def check(m):
+        def check(m: discord.Message):
             return m.author == ctx.message.author and m.channel == ctx.message.channel
 
         try:
-            msg = await self.bot.wait_for('message', check=check, timeout=timeout)  # bot이 self.bot으로 변경됨
+            msg: discord.Message = await self.bot.wait_for('message', check=check, timeout=timeout)
         except asyncio.TimeoutError:
             await ctx.send(f'시간초과 입니다...({timeout}초)')
         else:

@@ -11,7 +11,5 @@ class CustomHelpCommand(commands.HelpCommand):
                 if not command.hidden:
                     command_details += f"{command.name}: {command.help or 'No description'}\n"
             if command_details:
-                help_embed.add_field(
-                    name=cog.qualified_name if cog else "No Category", value=command_details, inline=False
-                )
+                help_embed.add_field(name=cog.qualified_name if cog else "No Category", value=command_details, inline=False)
         await self.context.send(embed=help_embed)
