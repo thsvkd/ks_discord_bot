@@ -94,7 +94,14 @@ class Music(commands.Cog):
             return None
         return True
 
-    @commands.command(name="재생", description="음악을 재생합니다.", aliases=["play", "p", "ㅔ", "대기", "queue", "q", "ㅂ"])
+    @commands.command(
+        name="재생",
+        help='음악을 재생할 수 있는 명령어. 사용법: !재생 <유튜브 링크> 또는 !재생 <검색어>',
+        description="음악을 재생합니다.",
+        aliases=[
+            "play",
+        ],
+    )
     async def play(self, ctx: commands.Context, *, url):
         try:
             msg = await ctx.send(f"잠시만 기다려주세요...")
@@ -165,7 +172,7 @@ class Music(commands.Cog):
             print(e)
             await msg.edit(content=f"{ctx.author.mention} 재생에 실패했습니다.")
 
-    @commands.command(name='루프', description="재생중인 음악을 무한 반복하거나 무한 반복을 해제합니다.", aliases=["무한반복", "loop", "repeat"])
+    @commands.command(name='반복', description="재생중인 음악을 무한 반복하거나 무한 반복을 해제합니다.", aliases=["무한반복", "loop", "repeat"])
     async def music_loop(self, ctx: commands.Context):
         voice_ok = await self.check_voice(ctx)
         if not voice_ok:
@@ -186,7 +193,9 @@ class Music(commands.Cog):
             queue["playing"]["loop"] = False
             return await msg.edit(content=f"{ctx.author.mention} 무한반복이 해제되었습니다.")
 
-    @commands.command(name="셔플", description="대기 리스트에서 음악을 무작위로 재생합니다.", aliases=["랜덤", "random", "shuffle", "sf", "ㄶ", "ㄴㅎ"])
+    @commands.command(
+        name="랜덤", description="대기 리스트에서 음악을 무작위로 재생합니다.", aliases=["셔플", "random", "shuffle", "sf", "ㄶ", "ㄴㅎ"]
+    )
     async def shuffle(self, ctx: commands.Context):
         voice_ok = await self.check_voice(ctx)
         if not voice_ok:

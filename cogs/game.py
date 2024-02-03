@@ -62,7 +62,7 @@ class Game(commands.Cog):
         await make_dir(directory_name)
         await add_result(directory_name, str(ctx.author), result_text + '\n')
 
-    @commands.command(name="전적")
+    @commands.command(name="전적", help='가위바위보 전적을 확인합니다.')
     async def game_board(self, ctx: commands.Context):
         user_name = str(ctx.author)
         file_path = "game_result/" + user_name + ".txt"
