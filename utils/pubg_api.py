@@ -14,6 +14,14 @@ def print_dict_pretty(json_data: Union[Dict, List]) -> None:
     print(json.dumps(json_data, indent=4, ensure_ascii=False))
 
 
+class ErrorCode_Balancer(Enum):
+    UNDEFINED = auto()
+    NO_ERROR = 'no_error'
+    PLAYER_NOT_FOUND = 'player_not_found'
+    ALREADY_EXIST = 'already_exist'
+    ALREADY_UPDATED = 'already_updated'
+
+
 class GameMode(Enum):
     UNDEFINED = auto()
     DUO = 'duo'
@@ -341,14 +349,17 @@ class PUBG_Balancer:
 
         return stats
 
-    def get_stats_score(self, player_name: str) -> float:
+    def get_stats_score(self, player_name: str) -> Union[float, ErrorCode_Balancer]:
         target_player = self.find_player(player_name)
 
         if target_player.is_update:
             return target_player.stats_score
         else:
-            self.update_player_data(player_name)
-            return target_player.stats_score
+            result = self.update_player_data(player_name)
+            if result == ErrorCode_Balancer.NO_ERROR:
+                return target_player.stats_score
+            else:
+                return result
 
     def calculate_stats_score(self, player_name: str, latest_matches: List[Match]) -> float:
         total_score = 0
@@ -401,14 +412,18 @@ class PUBG_Balancer:
 
         return total_score / len(latest_matches)
 
-    def update_player_data(self, player_name: str, game_mode: GameMode = GameMode.SQUAD, max_match_num: int = 20) -> None:
+    def update_player_data(self, player_name: str, game_mode: GameMode = GameMode.SQUAD, max_match_num: int = 20) -> ErrorCode_Balancer:
         target_player = self.find_player(player_name)
 
         if target_player.is_update:
-            return None
+            return ErrorCode_Balancer.ALREADY_UPDATED
 
         # Get basic player data
         player_data = self._request(f'players?filter[playerNames]={player_name}')
+
+        if player_data is None:
+            cprint(f"{player_name} 플레이어 데이터를 가져오는 데 실패하였습니다. 플레이어 이름의 철자를 확인해주세요.", 'red')
+            return ErrorCode_Balancer.PLAYER_NOT_FOUND
 
         try:
             target_player.id = player_data['data'][0]['id']
@@ -458,12 +473,18 @@ class PUBG_Balancer:
             cprint(e, 'red')
 
         target_player.is_update = True
+        return ErrorCode_Balancer.NO_ERROR
 
     def update_all_player_data(self, game_mode: GameMode = GameMode.SQUAD, max_match_num: int = 20) -> None:
         for player in self._players:
             cprint(f'{player.name} 플레이어 업데이트 시작', 'cyan', end='')
-            self.update_player_data(player_name=player.name, game_mode=game_mode, max_match_num=max_match_num)
-            cprint(f'\r{player.name} 플레이어 업데이트 완료. (stats_score: {player.stats_score})', 'green')
+            result = self.update_player_data(player_name=player.name, game_mode=game_mode, max_match_num=max_match_num)
+            if result == ErrorCode_Balancer.NO_ERROR:
+                cprint(f'\r{player.name} 플레이어 업데이트 완료. (stats_score: {player.stats_score})', 'green')
+            elif result == ErrorCode_Balancer.PLAYER_NOT_FOUND:
+                cprint(f'\r{player.name} 플레이어 업데이트 실패. (플레이어 이름을 정확히 입력해주세요.)', 'red')
+            else:
+                cprint(f'\r{player.name} 플레이어 업데이트 실패. (알 수 없는 오류, result: {result})', 'red')
 
     def export_score_data(self) -> Dict:
         self.update_all_player_data()
