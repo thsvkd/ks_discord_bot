@@ -31,19 +31,19 @@ class Game(commands.Cog):
     def __init__(self, bot: KSBot):
         self.bot = bot
 
-    @commands.command()
+    @commands.command(name="주사위", help='주사위를 굴립니다.')
     async def dice(self, ctx: commands.Context):
         randnum = random.randint(1, 6)
         await ctx.send(f'주사위 결과는 {randnum} 입니다.')
 
-    @commands.command()
+    @commands.command(name="뽑기", help='뽑기를 합니다.')
     async def mining(self, ctx: commands.Context):
         minerals = ['다이아몬드', '루비', '에메랄드', '자수정', '철', '석탄']
         weights = [1, 3, 6, 15, 25, 50]
         results = random.choices(minerals, weights=weights, k=5)
         await ctx.send(', '.join(results) + ' 광물들을 획득하였습니다.')
 
-    @commands.command()
+    @commands.command(name="가위바위보", help='가위바위보 게임을 합니다.')
     async def game(self, ctx: commands.Context, user: str):
         rps_table = ['가위', '바위', '보']
         bot = random.choice(rps_table)
@@ -62,7 +62,7 @@ class Game(commands.Cog):
         await make_dir(directory_name)
         await add_result(directory_name, str(ctx.author), result_text + '\n')
 
-    @commands.command(name="전적")
+    @commands.command(name="전적", help='가위바위보 전적을 확인합니다.')
     async def game_board(self, ctx: commands.Context):
         user_name = str(ctx.author)
         file_path = "game_result/" + user_name + ".txt"

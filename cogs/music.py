@@ -94,7 +94,12 @@ class Music(commands.Cog):
             return None
         return True
 
-    @commands.command(name="재생", description="음악을 재생합니다.", aliases=["play", "p", "ㅔ", "대기", "queue", "q", "ㅂ"])
+    @commands.command(
+        name="재생",
+        help='음악을 재생할 수 있는 명령어. 사용법: !재생 <유튜브 링크> 또는 !재생 <검색어>',
+        description="음악을 재생합니다.",
+        aliases=["play"],
+    )
     async def play(self, ctx: commands.Context, *, url):
         try:
             msg = await ctx.send(f"잠시만 기다려주세요...")
@@ -165,7 +170,12 @@ class Music(commands.Cog):
             print(e)
             await msg.edit(content=f"{ctx.author.mention} 재생에 실패했습니다.")
 
-    @commands.command(name='루프', description="재생중인 음악을 무한 반복하거나 무한 반복을 해제합니다.", aliases=["무한반복", "loop", "repeat"])
+    @commands.command(
+        name='반복',
+        help='재생중인 음악을 무한 반복하거나 무한 반복을 해제합니다.',
+        description="재생중인 음악을 무한 반복하거나 무한 반복을 해제합니다.",
+        aliases=["loop", "repeat"],
+    )
     async def music_loop(self, ctx: commands.Context):
         voice_ok = await self.check_voice(ctx)
         if not voice_ok:
@@ -186,7 +196,12 @@ class Music(commands.Cog):
             queue["playing"]["loop"] = False
             return await msg.edit(content=f"{ctx.author.mention} 무한반복이 해제되었습니다.")
 
-    @commands.command(name="셔플", description="대기 리스트에서 음악을 무작위로 재생합니다.", aliases=["랜덤", "random", "shuffle", "sf", "ㄶ", "ㄴㅎ"])
+    @commands.command(
+        name="랜덤재생",
+        help='대기 리스트에서 음악을 무작위로 재생합니다.',
+        description="대기 리스트에서 음악을 무작위로 재생합니다.",
+        aliases=["random", 'shuffle'],
+    )
     async def shuffle(self, ctx: commands.Context):
         voice_ok = await self.check_voice(ctx)
         if not voice_ok:
@@ -207,7 +222,12 @@ class Music(commands.Cog):
             queue["playing"]["random"] = False
             return await msg.edit(content=f"{ctx.author.mention} 랜덤 재생이 해제되었습니다.")
 
-    @commands.command(name="스킵", description="재생중인 음악을 스킵합니다.", aliases=["s", "skip", "ㄴ"])
+    @commands.command(
+        name="스킵",
+        help='재생중인 음악을 스킵합니다.',
+        description="재생중인 음악을 스킵합니다.",
+        aliases=["skip"],
+    )
     async def skip(self, ctx: commands.Context):
         voice = ctx.voice_client
         voice_ok = await self.check_voice(ctx)
@@ -215,7 +235,12 @@ class Music(commands.Cog):
             return
         voice.stop()
 
-    @commands.command(name="정지", description="음악 재생을 멈춥니다.", aliases=["stop", "ㄴ새ㅔ"])
+    @commands.command(
+        name="정지",
+        help='음악 재생을 멈춥니다.',
+        description="음악 재생을 멈춥니다.",
+        aliases=["stop"],
+    )
     async def stop(self, ctx: commands.Context):
         voice = ctx.voice_client
         voice_ok = await self.check_voice(ctx)
@@ -224,7 +249,12 @@ class Music(commands.Cog):
         del self.queues[str(ctx.guild.id)]
         voice.stop()
 
-    @commands.command(name="일시정지", description="음악을 일시정지합니다.", aliases=["pause", "ps", "ㅔㄴ"])
+    @commands.command(
+        name="일시정지",
+        help='음악을 일시정지합니다.',
+        description="음악을 일시정지합니다.",
+        aliases=["pause"],
+    )
     async def pause(self, ctx: commands.Context):
         voice = ctx.voice_client
         voice_ok = await self.check_voice(ctx)
@@ -233,7 +263,12 @@ class Music(commands.Cog):
         voice.pause()
         await ctx.send(f"{ctx.author.mention} 플레이어를 일시정지했습니다.")
 
-    @commands.command(name="계속재생", description="음악 일시정지를 해제합니다.", aliases=["resume", "r", "ㄱ"])
+    @commands.command(
+        name="계속재생",
+        help='음악 일시정지를 해제합니다.',
+        description="음악 일시정지를 해제합니다.",
+        aliases=["resume"],
+    )
     async def resume(self, ctx: commands.Context):
         voice: discord.VoiceClient = ctx.voice_client
         voice_ok = await self.check_voice(ctx, resume=True)
@@ -246,6 +281,7 @@ class Music(commands.Cog):
 
     @commands.command(
         name="강제연결해제",
+        help='봇 오류로 음악 재생에 문제가 발생했을 때 강제로 접속을 해제합니다.',
         description="봇 오류로 음악 재생에 문제가 발생했을 때 강제로 접속을 해제합니다.",
         aliases=["나가", "제발나가", "quit", 'leave', 'l', "ㅣ", "dc"],
     )
@@ -254,7 +290,12 @@ class Music(commands.Cog):
         await voice.disconnect(force=True)
         await ctx.send("강제 연결 해제가 완료되었습니다.")
 
-    @commands.command(name="볼륨", description="음악의 볼륨을 조절합니다.", aliases=["volume", "vol", "v", "패ㅣㅕㅡㄷ", "ㅍ"])
+    @commands.command(
+        name="볼륨",
+        help='음악의 볼륨을 조절합니다.',
+        description="음악의 볼륨을 조절합니다.",
+        aliases=["volume"],
+    )
     async def volume(self, ctx: commands.Context, vol: int = None):
         if vol > 100:
             return await ctx.send("숫자가 너무 큽니다.")
@@ -273,8 +314,9 @@ class Music(commands.Cog):
 
     @commands.command(
         name="대기리스트",
+        help='현재 대기 리스트를 보여줍니다.',
         description="현재 대기 리스트를 보여줍니다.",
-        aliases=["대기열", "재생리스트", "pl", "ql", "queuelist", "playlist", "비", "ㅔㅣ"],
+        aliases=["playlist"],
     )
     async def queue_list(self, ctx: commands.Context):
         if str(ctx.guild.id) not in self.queues.keys():
