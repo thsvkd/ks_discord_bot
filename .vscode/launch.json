@@ -6,7 +6,7 @@
   "configurations": [
     {
       "name": "Python: 현재 파일",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${file}",
       "console": "integratedTerminal",
@@ -14,9 +14,18 @@
     },
     {
       "name": "run main.py",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/main.py",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": true
+    },
+    {
+      "name": "run pubg_api.py",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/utils/pubg_api.py",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "justMyCode": true
