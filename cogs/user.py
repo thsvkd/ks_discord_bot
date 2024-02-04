@@ -14,7 +14,7 @@ class User(commands.Cog):
         description="유저를 추방합니다.",
         # aliases=['추방'],
     )
-    async def kick_user(self, ctx, nickname: discord.Member):
+    async def kick_user(self, ctx: commands.Context, nickname: discord.Member):
         await nickname.kick()
         await ctx.send(f"{nickname} 님이 추방되었습니다.")
 
@@ -24,7 +24,7 @@ class User(commands.Cog):
         description="유저를 차단합니다.",
         # aliases=['차단'],
     )
-    async def ban_user(self, ctx, nickname: discord.Member):
+    async def ban_user(self, ctx: commands.Context, nickname: discord.Member):
         await nickname.ban()
         await ctx.send(f"{nickname} 님이 차단되었습니다.")
 
@@ -49,7 +49,7 @@ class User(commands.Cog):
         description="유저에게 역할을 부여합니다.",
         # aliases=['역할부여'],
     )
-    async def role_user(self, ctx, nickname: discord.Member, role_name):
+    async def role_user(self, ctx: commands.Context, nickname: discord.Member, role_name):
         roles = ctx.guild.roles
         for role in roles:
             if role_name == role.name:

@@ -281,6 +281,9 @@ class PUBG_Balancer:
         else:
             return Player()
 
+    def is_player_exist(self, player_name: str) -> bool:
+        return bool(self.find_player(player_name).name)
+
     def add_player(self, player_name: str) -> None:
         if self.find_player(player_name).name:
             cprint(f"{player_name} 플레이어는 이미 추가되어 있습니다.", 'yellow')
@@ -472,27 +475,33 @@ class PUBG_Balancer:
 
 def main():
     pubg_balancer = PUBG_Balancer(api_key=os.environ['PUBG_TOKEN'], platform='steam')
-    pubg_balancer.add_player('SonPANG')
-    pubg_balancer.add_player('Sodaman89')
-    pubg_balancer.add_player('DefSomeone')
-    pubg_balancer.add_player('POSTINO-1')
-    pubg_balancer.add_player('gpfskdlxm')
-    pubg_balancer.add_player('SonHeungMin7')
-    pubg_balancer.add_player('PUMP_______JUNI')
-    pubg_balancer.add_player('Hyun_Rang')
-    pubg_balancer.add_player('VSS_Fighter')
-    pubg_balancer.add_player('ChicMoon')
-    pubg_balancer.add_player('NeedbxckTereA')
-    pubg_balancer.add_player('Sunhyeolru')
+    with open('clan_mambers.txt', 'r', encoding='UTF-8') as f:
+        player_data = f.readlines()
+        for line in player_data:
+            pubg_balancer.add_player(line.strip())
+
+    # pubg_balancer.add_player('SonPANG')
+    # pubg_balancer.add_player('Sodaman89')
+    # pubg_balancer.add_player('DefSomeone')
+    # pubg_balancer.add_player('POSTINO-1')
+    # pubg_balancer.add_player('gpfskdlxm')
+    # pubg_balancer.add_player('SonHeungMin7')
+    # pubg_balancer.add_player('PUMP_______JUNI')
+    # pubg_balancer.add_player('Hyun_Rang')
+    # pubg_balancer.add_player('VSS_Fighter')
+    # pubg_balancer.add_player('ChicMoon')
+    # pubg_balancer.add_player('NeedbxckTereA')
+    # pubg_balancer.add_player('Sunhyeolru')
 
     pubg_balancer.export_score_data()
     # pubg_balancer.update_all_player_data(max_match_num=20)
 
 
 if __name__ == '__main__':
-    # main()
-    pubg_balancer = PUBG_Balancer(api_key=os.environ['PUBG_TOKEN'], platform='steam')
-    player_name = 'SonPANG'
-    pubg_balancer.add_player(player_name)
-    pubg_balancer.update_player_data(player_name)
-    print(f'{player_name}\'s stats score: {pubg_balancer.get_stats_score(player_name)}')
+    main()
+
+    # pubg_balancer = PUBG_Balancer(api_key=os.environ['PUBG_TOKEN'], platform='steam')
+    # player_name = 'SonPANG'
+    # pubg_balancer.add_player(player_name)
+    # pubg_balancer.update_player_data(player_name)
+    # print(f'{player_name}\'s stats score: {pubg_balancer.get_stats_score(player_name)}')
