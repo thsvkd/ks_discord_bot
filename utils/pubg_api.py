@@ -402,7 +402,7 @@ class PUBG_Balancer:
                 + 1.4424 * player_match_stats.assists
             )
             if match_type == MatchType.RANKED:
-                match_score *= 2
+                match_score *= 1.2
             elif match_type == MatchType.NORMAL:
                 match_score *= 1
             else:
