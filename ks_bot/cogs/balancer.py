@@ -1,10 +1,9 @@
-import discord
 import os
 
 from discord.ext import commands
 
-from module.ksbot import KSBot
-from utils.pubg_api import PUBG_Balancer, ErrorCode_Balancer
+from ks_bot.ks_bot import KSBot
+from ks_bot.core.pubg_api import PUBG_Balancer, ErrorCode_Balancer
 
 
 class Balancer(commands.Cog):
@@ -19,10 +18,6 @@ class Balancer(commands.Cog):
     #     aliases=['실력'],
     # )
     # async def player_stats(self, ctx: commands.Context, player_name: str):
-    #     if not self.pubg_balancer.is_player_exist(player_name):
-    #         self.pubg_balancer.add_player(player_name)
-    #         self.pubg_balancer.update_player_data(player_name)
-
     #     target_player = self.pubg_balancer.find_player(player_name)
 
     #     ctx.send(f"{player_name}의 스탯 정보")

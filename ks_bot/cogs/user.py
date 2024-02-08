@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands
 
-from module.ksbot import KSBot
+from ks_bot.ks_bot import KSBot
 
 
 class User(commands.Cog):

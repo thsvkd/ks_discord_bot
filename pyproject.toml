@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "ks_bot"
+version = "0.1.0"
+description = "ks_bot"
+authors = ["Your Name <thsxogud1123@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+# 여기에 프로젝트의 다른 의존성 추가
+# 예: requests = "^2.25.1"
+
+[tool.poetry.dev-dependencies]
+# 개발 시 필요한 의존성 추가
+# 예: pytest = "^6.2.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

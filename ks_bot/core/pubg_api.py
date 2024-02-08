@@ -1,266 +1,10 @@
-import requests
-from requests.adapters import HTTPAdapter
-from requests.packages.urllib3.util.retry import Retry
 import os
 from termcolor import colored, cprint
-from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Union
-import json
-import time
-from enum import Enum, auto
-
-
-def print_dict_pretty(json_data: Union[Dict, List]) -> None:
-    print(json.dumps(json_data, indent=4, ensure_ascii=False))
-
-
-class ErrorCode_Balancer(Enum):
-    UNDEFINED = auto()
-    NO_ERROR = 'no_error'
-    PLAYER_NOT_FOUND = 'player_not_found'
-    ALREADY_EXIST = 'already_exist'
-    ALREADY_UPDATED = 'already_updated'
-
-
-class GameMode(Enum):
-    UNDEFINED = auto()
-    DUO = 'duo'
-    DUO_FPP = 'duo-fpp'
-    SOLO = 'solo'
-    SOLO_FPP = 'solo-fpp'
-    SQUAD = 'squad'
-    SQUAD_FPP = 'squad-fpp'
-    CONQUEST_DUO = 'conquest-duo'
-    CONQUEST_DUO_FPP = 'conquest-duo-fpp'
-    CONQUEST_SOLO = 'conquest-solo'
-    CONQUEST_SOLO_FPP = 'conquest-solo-fpp'
-    CONQUEST_SQUAD = 'conquest-squad'
-    CONQUEST_SQUAD_FPP = 'conquest-squad-fpp'
-    ESPORTS_DUO = 'esports-duo'
-    ESPORTS_DUO_FPP = 'esports-duo-fpp'
-    ESPORTS_SOLO = 'esports-solo'
-    ESPORTS_SOLO_FPP = 'esports-solo-fpp'
-    ESPORTS_SQUAD = 'esports-squad'
-    ESPORTS_SQUAD_FPP = 'esports-squad-fpp'
-    LAB_TPP = 'lab-tpp'
-    LAB_FPP = 'lab-fpp'
-    NORMAL_DUO = 'normal-duo'
-    NORMAL_DUO_FPP = 'normal-duo-fpp'
-    NORMAL_SOLO = 'normal-solo'
-    NORMAL_SOLO_FPP = 'normal-solo-fpp'
-    NORMAL_SQUAD = 'normal-squad'
-    NORMAL_SQUAD_FPP = 'normal-squad-fpp'
-    TDM = 'tdm'
-    WAR_DUO = 'war-duo'
-    WAR_DUO_FPP = 'war-duo-fpp'
-    WAR_SOLO = 'war-solo'
-    WAR_SOLO_FPP = 'war-solo-fpp'
-    WAR_SQUAD = 'war-squad'
-    WAR_SQUAD_FPP = 'war-squad-fpp'
-    ZOMBIE_DUO = 'zombie-duo'
-    ZOMBIE_DUO_FPP = 'zombie-duo-fpp'
-    ZOMBIE_SOLO = 'zombie-solo'
-    ZOMBIE_SOLO_FPP = 'zombie-solo-fpp'
-    ZOMBIE_SQUAD = 'zombie-squad'
-    ZOMBIE_SQUAD_FPP = 'zombie-squad-fpp'
-
-    @classmethod
-    def from_string(cls, value: str):
-        for member in cls:
-            if member.value == value:
-                return member
-        return cls.UNDEFINED
-
-
-class MatchType(Enum):
-    UNDEFINED = auto()
-    AIROYALE = 'airoyale'
-    ARCADE = 'arcade'
-    CUSTOM = 'custom'
-    EVENT = 'event'
-    SEASONAL = 'seasonal'
-    TRAINING = 'training'
-    NORMAL = 'official'
-    RANKED = 'competitive'
-
-    @classmethod
-    def from_string(cls, value: str):
-        for member in cls:
-            if member.value == value:
-                return member
-        return cls.UNDEFINED
-
-
-class Tier(Enum):
-    UNDEFINED = auto()
-    BRONZE = 'bronze'
-    SILVER = 'silver'
-    GOLD = 'gold'
-    PLATINUM = 'platinum'
-    DIAMOND = 'diamond'
-    MASTER = 'master'
-
-    @classmethod
-    def from_string(cls, value: str):
-        for member in cls:
-            if member.value == value:
-                return member
-        return cls.UNDEFINED
-
-
-@dataclass
-class Match:
-    id: str = ''
-    is_custom_match: bool = False
-    game_mode: GameMode = GameMode.UNDEFINED
-    match_type: MatchType = MatchType.UNDEFINED
-    participants: list = field(default_factory=list)
-
-    def find_player_stats_info(self, player_name: str) -> dict:
-        for participant in self.participants:
-            if participant['attributes']['stats']['name'] == player_name:
-                return participant['attributes']['stats']
-        else:
-            return {}
-
-
-@dataclass
-class Player:
-    id: str = ''
-    normalized_id: str = ''
-    name: str = ''
-    is_update: bool = False
-    latest_matches_info: list = field(default_factory=list)
-    latest_matches: List[Match] = field(default_factory=list)
-    platform: str = ''
-    ban_type: str = ''
-    clan_id: str = ''
-    rank_stats: dict = field(default_factory=dict)
-    stats_score: float = 0.0
-
-
-@dataclass
-class PlayerMatchStats:
-    player_name: str = ''
-    DBNOs: int = 0
-    boosts: int = 0
-    damage_dealt: float = 0.0
-    death_type: str = ''
-    headshot_kills: int = 0
-    heals: int = 0
-    win_place: int = 0
-    kill_place: int = 0
-    kill_streaks: int = 0
-    kills: int = 0
-    assists: int = 0
-    longest_kill: float = 0.0
-    revives: int = 0
-    ride_distance: float = 0.0
-    swim_distance: float = 0.0
-    walk_distance: float = 0.0
-    road_kills: int = 0
-    team_kills: int = 0
-    time_survived: int = 0
-    vehicle_destroys: int = 0
-    weapons_acquired: int = 0
-
-
-@dataclass
-class Stats:
-    type: MatchType = MatchType.UNDEFINED
-    tier: int = Tier.UNDEFINED
-    sub_tier: int = 0
-    rank_point: int = 0
-    rounds_played: int = 0
-    avg_rank: float = 0.0
-    top10_ratio: float = 0.0
-    win_ratio: float = 0.0
-    damage_dealt: float = 0.0
-    _avg_dealt: float = 0.0
-    kills: int = 0
-    assists: int = 0
-    deaths: int = 0
-    kda: float = 0.0
-    _kd: float = 0.0
-
-    @property
-    def avg_dealt(self) -> float:
-        try:
-            return self.damage_dealt / self.rounds_played if self.rounds_played else 0.0
-        except ZeroDivisionError:
-            return 0.0
-
-    @property
-    def kd(self) -> float:
-        try:
-            return self.kills / self.deaths if self.deaths else 0.0
-        except ZeroDivisionError:
-            return 0.0
-
-
-class HttpMethod(Enum):
-    GET = 'GET'
-    POST = 'POST'
-    PUT = 'PUT'
-    DELETE = 'DELETE'
-    PATCH = 'PATCH'
-
-
-import time
-
-
-class APIRequestHandler:
-    def __init__(self, api_key: str, base_url: str, max_retries: int = 3, timeout: float = 5.0, rate_limit_per_minute: int = 10):
-        self.api_key = api_key
-        self.base_url = base_url
-        self.session = requests.Session()
-        self.timeout = timeout
-        self.rate_limit_per_minute = rate_limit_per_minute
-        self.remaining_requests = rate_limit_per_minute
-        self.rate_limit_reset_timestamp = time.time()
-        retries = Retry(total=max_retries, backoff_factor=1, status_forcelist=[500, 502, 503, 504])
-        self.session.mount('https://', HTTPAdapter(max_retries=retries))
-
-    def wait_for_rate_limit_reset(self):
-        current_time = time.time()
-        while self.remaining_requests <= 0 and current_time < self.rate_limit_reset_timestamp:
-            sleep_time = self.rate_limit_reset_timestamp - current_time
-            cprint(f"\rRate limit exceeded. Waiting for {sleep_time:.0f} seconds.", 'yellow', end='')
-            time.sleep(1)
-            current_time = time.time()
-        else:
-            print("\nRate limit has been reset. Continuing with the requests.")
-
-    def request(
-        self, endpoint: str, method: HttpMethod = HttpMethod.GET, headers: dict = None, params: dict = None, data: dict = None, json: dict = None
-    ) -> dict:
-        url = f'{self.base_url}/{endpoint}'
-        default_headers = {"Authorization": f"Bearer {self.api_key}", "Accept": "application/vnd.api+json"}
-        if headers:
-            default_headers.update(headers)
-
-        try:
-            response = self.session.request(method.value, url, headers=default_headers, params=params, json=json, data=data, timeout=self.timeout)
-            if response.status_code == 429:
-                # We've hit the rate limit, set remaining requests to 0 and calculate reset time
-                self.remaining_requests = 0
-                self.rate_limit_reset_timestamp = float(response.headers.get('X-RateLimit-Reset', time.time()))
-                self.wait_for_rate_limit_reset()
-                return self.request(endpoint, method, headers, params, data, json)  # Retry the request
-            response.raise_for_status()
-            # Update remaining requests from headers
-            self.remaining_requests = int(response.headers.get('X-RateLimit-Remaining', self.remaining_requests))
-            self.rate_limit_reset_timestamp = float(response.headers.get('X-RateLimit-Reset', self.rate_limit_reset_timestamp))
-            return response.json()
-        except requests.exceptions.HTTPError as http_err:
-            print(f"HTTP error occurred: {http_err}")
-        except requests.exceptions.ConnectionError as conn_err:
-            print(f"Connection error occurred: {conn_err}")
-        except requests.exceptions.Timeout as timeout_err:
-            print(f"Timeout error occurred: {timeout_err}")
-        except requests.exceptions.RequestException as err:
-            print(f"An error occurred: {err}")
-        return None
+from ks_bot.core.request_handler import HttpMethod, APIRequestHandler
+from ks_bot.common.error import ErrorCode_Balancer
+from ks_bot.common.enum import GameMode, MatchType, Tier
+from ks_bot.common.dataclass import Player, Match, Stats, PlayerMatchStats
 
 
 class PUBG_Balancer:
@@ -352,7 +96,7 @@ class PUBG_Balancer:
     def get_stats_score(self, player_name: str) -> Union[float, ErrorCode_Balancer]:
         target_player = self.find_player(player_name)
 
-        if target_player.is_update:
+        if target_player.is_updated:
             return target_player.stats_score
         else:
             result = self.update_player_data(player_name)
@@ -415,7 +159,7 @@ class PUBG_Balancer:
     def update_player_data(self, player_name: str, game_mode: GameMode = GameMode.SQUAD, max_match_num: int = 20) -> ErrorCode_Balancer:
         target_player = self.find_player(player_name)
 
-        if target_player.is_update:
+        if target_player.is_updated:
             return ErrorCode_Balancer.ALREADY_UPDATED
 
         # Get basic player data
@@ -472,7 +216,7 @@ class PUBG_Balancer:
         except IndexError as e:
             cprint(e, 'red')
 
-        target_player.is_update = True
+        target_player.is_updated = True
         return ErrorCode_Balancer.NO_ERROR
 
     def update_all_player_data(self, game_mode: GameMode = GameMode.SQUAD, max_match_num: int = 20) -> None:

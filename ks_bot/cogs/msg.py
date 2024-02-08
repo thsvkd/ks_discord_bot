@@ -2,7 +2,7 @@ import asyncio
 import discord
 from discord.ext import commands
 from discord.ext.commands import BadArgument
-from module.ksbot import KSBot
+from ks_bot.ks_bot import KSBot
 
 
 class Msg(commands.Cog):

@@ -1,12 +1,9 @@
 import random
 import os
-from typing import List
 
-from discord import Member
 from discord.ext import commands
-from discord.ext.commands import MissingRequiredArgument
 
-from module.ksbot import KSBot
+from ks_bot.ks_bot import KSBot
 
 
 async def make_dir(directory_name: str):
