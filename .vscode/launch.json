@@ -25,7 +25,7 @@
       "name": "run pubg_api.py",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/utils/pubg_api.py",
+      "program": "${workspaceFolder}/ks_bot/core/pubg_api.py",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "justMyCode": true

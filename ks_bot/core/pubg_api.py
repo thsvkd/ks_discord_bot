@@ -1,272 +1,328 @@
 import os
+import json
 from termcolor import colored, cprint
-from typing import List, Dict, Union
+from typing import List, Dict, Union, Tuple
+from datetime import datetime, timedelta
+
 from ks_bot.core.request_handler import HttpMethod, APIRequestHandler
-from ks_bot.common.error import ErrorCode_Balancer
+from ks_bot.common.error import *
 from ks_bot.common.enum import GameMode, MatchType, Tier
 from ks_bot.common.dataclass import Player, Match, Stats, PlayerMatchStats
+from ks_bot.core.db_handler import SQLiteDBHandler
+from ks_bot.common.common import *
 
 
 class PUBG_Balancer:
-    def __init__(self, api_key: str, platform: str = 'steam'):
+    DEFAULT_UPDATE_INTERVAL = timedelta(days=7)
+    DEFAULT_MAX_MATCH_NUM = 20
+
+    def __init__(self, api_key: str, platform: str = 'steam', db_init: bool = False):
         self._api_key = api_key
         self._platform = platform
         self._header = {"Authorization": f"Bearer {self._api_key}", "Accept": "application/vnd.api+json"}
         self._base_url = f'https://api.pubg.com/shards/{self._platform}'
         self._api_request_handler = APIRequestHandler(api_key=self._api_key, base_url=self._base_url)
 
-        self._players: List[Player] = []
+        if db_init:
+            self._db_handler = SQLiteDBHandler().init()
+        else:
+            self._db_handler = SQLiteDBHandler().open()
 
-    def _request(self, endpoint: str, headers: dict = None, params: dict = None, data: dict = None, json: dict = None) -> dict:
-        return self._api_request_handler.request(endpoint=endpoint, method=HttpMethod.GET, headers=headers, params=params, data=data, json=json)
+    #### request functions #####################################################################################################################################
 
-    def parse_player_id(self, player_id: str) -> str:
+    def _request(self, endpoint: str, headers: dict = None, params: dict = None, data: dict = None, json: dict = None) -> dict | Error_Balancer:
+        result = self._api_request_handler.request(endpoint=endpoint, method=HttpMethod.GET, headers=headers, params=params, data=data, json=json)
+        if not isinstance(result, ErrorCode_Balancer):
+            cprint(f"API 요청 성공: {endpoint}", 'green')
+
+        return result
+
+    def _request_player(self, player_name: str) -> Player | Error_Balancer:
+        player_data = self._request(f'players?filter[playerNames]={player_name}')
+        if isinstance(player_data, ErrorCode_Balancer):
+            if player_data == ErrorCode_Balancer.PLAYER_NOT_FOUND:
+                return PlayerNotFoundError_Balancer(message=f'{player_name} 플레이어를 찾을 수 없습니다. 플레이어 이름을 정확히 확인해주세요.')
+            elif player_data == ErrorCode_Balancer.API_REQUEST_ERROR:
+                return APIRequestError_Balancer(message=f'API 요청 중 에러가 발생하였습니다.')
+            else:
+                return Error_Balancer(message='API 요청 중 알 수 없는 에러가 발생하였습니다.')
+
+        try:
+            player = Player(
+                id=player_data['data'][0]['id'],
+                normalized_id=self._parse_player_id(player_data['data'][0]['id']),
+                name=player_data['data'][0]['attributes']['name'],
+                platform=player_data['data'][0]['attributes']['shardId'],
+                ban_type=player_data['data'][0]['attributes']['banType'],
+                clan_id=player_data['data'][0]['attributes']['clanId'],
+                match_list=[match for match in player_data['data'][0]['relationships']['matches']['data'] if match['type'] == 'match'],
+            )
+            return player
+        except IndexError as e:
+            return IndexError_Balancer(message=e)
+        except KeyError as e:
+            return KeyError_Balancer(message=e)
+
+    def _request_seasons_data(self) -> str | Error_Balancer:
+        season_data = self._request('seasons')
+        if isinstance(season_data, Error_Balancer):
+            return season_data
+
+        try:
+            current_season = list(filter(lambda x: x['attributes']['isCurrentSeason'], season_data['data']))[0]
+            return current_season
+        except IndexError as e:
+            return IndexError_Balancer(message=e)
+        except KeyError as e:
+            return KeyError_Balancer(message=e)
+
+    def _request_rank_stats(self, player_name: str, season_id: str) -> Stats | Error_Balancer:
+        target_player = self.find_player(player_name)
+        player_rank_data = self._request(f'players/{target_player.id}/seasons/{season_id}/ranked')
+        if isinstance(player_rank_data, Error_Balancer):
+            return player_rank_data
+
+        try:
+            squad_stats = player_rank_data['data']['attributes']['rankedGameModeStats']['squad']
+            stats = Stats(
+                type=MatchType.RANKED,
+                tier=Tier.from_string(squad_stats['currentTier']['tier']),
+                sub_tier=squad_stats['currentTier']['subTier'],
+                rank_point=squad_stats['currentRankPoint'],
+                rounds_played=squad_stats['roundsPlayed'],
+                avg_rank=squad_stats['avgRank'],
+                top10_ratio=squad_stats['top10Ratio'],
+                win_ratio=squad_stats['winRatio'],
+                damage_dealt=squad_stats['damageDealt'],
+                kills=squad_stats['kills'],
+                assists=squad_stats['assists'],
+                deaths=squad_stats['deaths'],
+                kda=squad_stats['kda'],
+            )
+        except IndexError as e:
+            return IndexError_Balancer(message=e)
+        except KeyError as e:
+            return KeyError_Balancer(message=e)
+
+        return stats
+
+    def _request_clan_data(self, clan_id: str = 'clan.fab1814f906d49b08d77b3adb783cc24') -> str:
+        clan_data = self._request(f'clans/{clan_id}')
+        if isinstance(clan_data, Error_Balancer):
+            return clan_data
+
+        return clan_data
+
+    def _request_match(self, match_id: str) -> Match | Error_Balancer:
+        match_data = self._request(f'matches/{match_id}')
+        if isinstance(match_data, Error_Balancer):
+            return match_data
+
+        try:
+            match = Match(
+                id=match_id,
+                is_custom_match=match_data['data']['attributes']['isCustomMatch'],
+                game_mode=GameMode.from_string(match_data['data']['attributes']['gameMode']),
+                match_type=MatchType.from_string(match_data['data']['attributes']['matchType']),
+                map_name=match_data['data']['attributes']['mapName'],
+                duration=match_data['data']['attributes']['duration'],
+                season_state=match_data['data']['attributes']['seasonState'],
+                date=parse_utc_to_datetime(match_data['data']['attributes']['createdAt']),
+                participants=list(filter(lambda x: x['type'] == 'participant', match_data['included'])),
+            )
+            return match
+        except IndexError as e:
+            return IndexError_Balancer(message=e)
+        except KeyError as e:
+            return KeyError_Balancer(message=e)
+
+    def _request_player_match_stats(self, player_name: str, match_id: str) -> PlayerMatchStats | Error_Balancer:
+        target_player = self.get_player(player_name, request_api=False)
+        match = self._request_match(match_id)
+        if isinstance(target_player, PlayerNotFoundError_Balancer):
+            return target_player
+        if isinstance(match, PlayerMatchStatsNotFoundError_Balancer):
+            return match
+
+        return match.get_match_by_player_name(player_name)
+
+    #### util functions ##################################################################################################################################
+
+    def _parse_player_id(self, player_id: str) -> str:
         if 'account.' in player_id:
             return player_id.split('.')[1]
         elif '-' in player_id:
             return player_id.replace('-', '')
 
-    def find_player(self, player_name: str) -> Player:
-        for player in self._players:
-            if player.name == player_name:
-                return player
-        else:
-            return Player()
-
-    def is_player_exist(self, player_name: str) -> bool:
-        return bool(self.find_player(player_name).name)
-
-    def add_player(self, player_name: str) -> None:
-        if self.find_player(player_name).name:
-            cprint(f"{player_name} 플레이어는 이미 추가되어 있습니다.", 'yellow')
-
-        player = Player(name=player_name)
-        self._players.append(player)
-
-    def remove_player(self, player_name: str) -> None:
-        target_player = self.find_player(player_name)
-        self._players.remove(target_player)
-
-    def get_seasons_data(self) -> str:
-        season_data = self._request('seasons')
-        current_season = list(filter(lambda x: x['attributes']['isCurrentSeason'], season_data['data']))[0]
-        return current_season
-
-    def get_clan_data(self, clan_id: str = 'clan.fab1814f906d49b08d77b3adb783cc24') -> str:
-        clan_data = self._request(f'clans/{clan_id}')
-        return clan_data
-
-    def get_match(self, match_id: str) -> Match:
-        match_data = self._request(f'matches/{match_id}')
-
-        match = Match(
-            id=match_id,
-            is_custom_match=match_data['data']['attributes']['isCustomMatch'],
-            game_mode=GameMode.from_string(match_data['data']['attributes']['gameMode']),
-            match_type=MatchType.from_string(match_data['data']['attributes']['matchType']),
-            participants=list(filter(lambda x: x['type'] == 'participant', match_data['included'])),
-        )
-
-        return match
-
-    def get_rank_stats(self, player_name: str, season_id: str) -> Stats:
-        target_player = self.find_player(player_name)
-
-        player_rank_data = self._request(f'players/{target_player.id}/seasons/{season_id}/ranked')
-        squad_stats = player_rank_data['data']['attributes']['rankedGameModeStats']['squad']
-
-        stats = Stats(
-            type=MatchType.RANKED,
-            tier=Tier.from_string(squad_stats['currentTier']['tier']),
-            sub_tier=squad_stats['currentTier']['subTier'],
-            rank_point=squad_stats['currentRankPoint'],
-            rounds_played=squad_stats['roundsPlayed'],
-            avg_rank=squad_stats['avgRank'],
-            top10_ratio=squad_stats['top10Ratio'],
-            win_ratio=squad_stats['winRatio'],
-            damage_dealt=squad_stats['damageDealt'],
-            kills=squad_stats['kills'],
-            assists=squad_stats['assists'],
-            deaths=squad_stats['deaths'],
-            kda=squad_stats['kda'],
-        )
-
-        return stats
-
-    def get_stats_score(self, player_name: str) -> Union[float, ErrorCode_Balancer]:
-        target_player = self.find_player(player_name)
-
-        if target_player.is_updated:
-            return target_player.stats_score
-        else:
-            result = self.update_player_data(player_name)
-            if result == ErrorCode_Balancer.NO_ERROR:
-                return target_player.stats_score
-            else:
-                return result
-
-    def calculate_stats_score(self, player_name: str, latest_matches: List[Match]) -> float:
+    def _calculate_stats_score(self, latest_player_match_stats_list: List[PlayerMatchStats]) -> float:
         total_score = 0
+        A = -2.7557
+        B = 13.2481
+        C = 3.5403
+        D = 1.4424
+        E = 1.2
 
-        for match in latest_matches:
-            player_stats_info = match.find_player_stats_info(player_name)
-            match_type = match.match_type
-            player_match_stats = PlayerMatchStats(
-                player_name=player_name,
-                DBNOs=player_stats_info['DBNOs'],
-                boosts=player_stats_info['boosts'],
-                damage_dealt=player_stats_info['damageDealt'],
-                death_type=player_stats_info['deathType'],
-                headshot_kills=player_stats_info['headshotKills'],
-                heals=player_stats_info['heals'],
-                win_place=player_stats_info['winPlace'],
-                kill_place=player_stats_info['killPlace'],
-                kill_streaks=player_stats_info['killStreaks'],
-                kills=player_stats_info['kills'],
-                assists=player_stats_info['assists'],
-                longest_kill=player_stats_info['longestKill'],
-                revives=player_stats_info['revives'],
-                ride_distance=player_stats_info['rideDistance'],
-                swim_distance=player_stats_info['swimDistance'],
-                walk_distance=player_stats_info['walkDistance'],
-                road_kills=player_stats_info['roadKills'],
-                team_kills=player_stats_info['teamKills'],
-                time_survived=player_stats_info['timeSurvived'],
-                vehicle_destroys=player_stats_info['vehicleDestroys'],
-                weapons_acquired=player_stats_info['weaponsAcquired'],
-            )
-
-            # 공식 1번안
-            # match_score = -2.7557 + 13.2481 * (1 / player_match_stats.win_place) + 3.5403 * player_match_stats.kills + 1.4424 * player_match_stats.assists
-            # 공식 2번안
-            match_score = (
-                -2.7557
-                + 13.2481 * (1 / player_match_stats.win_place)
-                + 3.5403 * (player_match_stats.damage_dealt / 100)
-                + 1.4424 * player_match_stats.assists
-            )
-            if match_type == MatchType.RANKED:
-                match_score *= 1.2
-            elif match_type == MatchType.NORMAL:
-                match_score *= 1
-            else:
+        for player_match_stats in latest_player_match_stats_list:
+            match_type = player_match_stats.match_type
+            if not match_type in [MatchType.NORMAL, MatchType.RANKED]:
                 cprint(f"알 수 없는 매치 타입입니다. match_type: {match_type}", 'red')
+                continue
 
+            match_score = (
+                (A + B * (1 / player_match_stats.win_place) + C * (player_match_stats.damage_dealt / 100) + D * player_match_stats.assists) * 1
+                if match_type == MatchType.NORMAL
+                else E
+            )
             total_score += match_score
 
-        return total_score / len(latest_matches)
+        return total_score / len(latest_player_match_stats_list)
 
-    def update_player_data(self, player_name: str, game_mode: GameMode = GameMode.SQUAD, max_match_num: int = 20) -> ErrorCode_Balancer:
-        target_player = self.find_player(player_name)
+    #### DB functions ##################################################################################################################################
 
-        if target_player.is_updated:
-            return ErrorCode_Balancer.ALREADY_UPDATED
+    def find_player(self, player_name: str) -> Player | Error_Balancer:
+        return self._db_handler.get_player(player_name=player_name)
 
-        # Get basic player data
-        player_data = self._request(f'players?filter[playerNames]={player_name}')
+    def player_exist(self, player_name: str) -> bool | Error_Balancer:
+        return self._db_handler.player_exists(player_name=player_name)
 
-        if player_data is None:
-            cprint(f"{player_name} 플레이어 데이터를 가져오는 데 실패하였습니다. 플레이어 이름의 철자를 확인해주세요.", 'red')
-            return ErrorCode_Balancer.PLAYER_NOT_FOUND
+    def is_player_data_outdated(self, player_name: str, update_interval: timedelta = timedelta(days=7)) -> bool | Error_Balancer:
+        return self._db_handler.is_player_data_outdated(player_name=player_name, update_interval=update_interval)
 
-        try:
-            target_player.id = player_data['data'][0]['id']
-            target_player.normalized_id = self.parse_player_id(player_data['data'][0]['id'])
-            target_player.name = player_data['data'][0]['attributes']['name']
-            target_player.platform = player_data['data'][0]['attributes']['shardId']
-            target_player.ban_type = player_data['data'][0]['attributes']['banType']
-            target_player.clan_id = player_data['data'][0]['attributes']['clanId']
-        except IndexError as e:
-            cprint(e, 'red')
+    def update_player(self, player: Player) -> None:
+        self._db_handler.update_player(player=player)
 
-        # Get rank match player data
-        # current_season = self.get_seasons_data()
-        # season_id = current_season['id']
-        # rank_stats = self.get_rank_stats(player_name, season_id)
-        # target_player.rank_stats = rank_stats
+    def insert_player(self, player: Player) -> None:
+        self._db_handler.insert_player(player=player)
 
-        # Get normal match player data
-        try:
-            latest_matches_info = player_data['data'][0]['relationships']['matches']['data']
-            latest_matches: List[Match] = []
+    # TODO: 아래 함수는 유저 밸런스 조정을 위해 사용자를 추가하기 위해 사용하는 것으로 변경해야함
+    # def add_player(self, player_name: str) -> None:
+    #     pass
 
-            # Get latest valid matched
-            count = 0
-            for match_info in latest_matches_info:
-                if count == max_match_num:
-                    break
+    # def remove_player(self, player_name: str) -> None:
+    #     pass
 
-                match = self.get_match(match_info['id'])
-                if not (
-                    match.game_mode == game_mode
-                    and match.match_type in [MatchType.NORMAL, MatchType.RANKED]
-                    and match.find_player_stats_info(player_name)
-                ):
-                    continue
+    #### public functions ##################################################################################################################################
 
-                latest_matches.append(match)
-                count += 1
-            else:
-                cprint(
-                    f"{max_match_num}개 만큼의 유효한 최근 매치 정보를 가져오는 데 실패하였습니다. player: {player_name}, match_num: {count}",
-                    'yellow',
-                )
+    def get_player(self, player_name: str, request_api: bool = False) -> Player | Error_Balancer:
+        player = self._request_player(player_name) if request_api else self.find_player(player_name)
+        if isinstance(player, Error_Balancer):
+            return player
 
-            target_player.stats_score = self.calculate_stats_score(player_name, latest_matches)
-        except IndexError as e:
-            cprint(e, 'red')
+        if not self.player_exist(player_name):
+            self.insert_player(player)
+        if self.is_player_data_outdated(player_name, update_interval=timedelta(hours=1)) == True:
+            self.update_player(player)
 
-        target_player.is_updated = True
-        return ErrorCode_Balancer.NO_ERROR
+        return player
 
-    def update_all_player_data(self, game_mode: GameMode = GameMode.SQUAD, max_match_num: int = 20) -> None:
-        for player in self._players:
-            cprint(f'{player.name} 플레이어 업데이트 시작', 'cyan', end='')
-            result = self.update_player_data(player_name=player.name, game_mode=game_mode, max_match_num=max_match_num)
-            if result == ErrorCode_Balancer.NO_ERROR:
-                cprint(f'\r{player.name} 플레이어 업데이트 완료. (stats_score: {player.stats_score})', 'green')
-            elif result == ErrorCode_Balancer.PLAYER_NOT_FOUND:
-                cprint(f'\r{player.name} 플레이어 업데이트 실패. (플레이어 이름을 정확히 입력해주세요.)', 'red')
-            else:
-                cprint(f'\r{player.name} 플레이어 업데이트 실패. (알 수 없는 오류, result: {result})', 'red')
+    def get_player_match_stats(self, player_name: str, match_id: str) -> PlayerMatchStats | Error_Balancer:
+        if self._db_handler.player_match_stats_exists(match_id):
+            player_match_stats = self._db_handler.get_player_match_stats(match_id)
+            return player_match_stats
 
-    def export_score_data(self) -> Dict:
-        self.update_all_player_data()
+        match = self._request_match(match_id)
+        if isinstance(match, Error_Balancer):
+            return match
 
-        with open('player_data.txt', 'w', encoding='UTF-8') as f:
-            player_data = [f'{player.name:<}, {player.stats_score:> .04f}\n' for player in self._players]
-            f.writelines(player_data)
+        player_match_stats = match.get_match_by_player_name(player_name)
+        if isinstance(player_match_stats, PlayerMatchStatsNotFoundError_Balancer):
+            return player_match_stats
 
+        self._db_handler.insert_player_match_stats(player_match_stats)
+        return player_match_stats
 
-def main():
-    pubg_balancer = PUBG_Balancer(api_key=os.environ['PUBG_TOKEN'], platform='steam')
-    with open('clan_mambers.txt', 'r', encoding='UTF-8') as f:
-        player_data = f.readlines()
-        for line in player_data:
-            pubg_balancer.add_player(line.strip())
+    def get_latest_player_match_stats_list(
+        self, player_name: str, game_mode: GameMode = GameMode.SQUAD, max_match_num: int = 20
+    ) -> List[PlayerMatchStats] | Error_Balancer:
+        target_player = self.get_player(player_name, request_api=False)
+        if isinstance(target_player, PlayerNotFoundError_Balancer):
+            return target_player
 
-    # pubg_balancer.add_player('SonPANG')
-    # pubg_balancer.add_player('Sodaman89')
-    # pubg_balancer.add_player('DefSomeone')
-    # pubg_balancer.add_player('POSTINO-1')
-    # pubg_balancer.add_player('gpfskdlxm')
-    # pubg_balancer.add_player('SonHeungMin7')
-    # pubg_balancer.add_player('PUMP_______JUNI')
-    # pubg_balancer.add_player('Hyun_Rang')
-    # pubg_balancer.add_player('VSS_Fighter')
-    # pubg_balancer.add_player('ChicMoon')
-    # pubg_balancer.add_player('NeedbxckTereA')
-    # pubg_balancer.add_player('Sunhyeolru')
+        # Get latest valid match player data
+        latest_player_match_stats_list: List[PlayerMatchStats] = []
+        match_count = 0
+        for match_id in [match['id'] for match in target_player.match_list]:
+            if match_count == max_match_num:
+                break
 
-    pubg_balancer.export_score_data()
-    # pubg_balancer.update_all_player_data(max_match_num=20)
+            player_match_stats = self.get_player_match_stats(player_name, match_id)
+            if isinstance(player_match_stats, PlayerMatchStatsNotFoundError_Balancer):
+                return player_match_stats
+            if player_match_stats.game_mode != game_mode:
+                continue
+            if player_match_stats.match_type not in [MatchType.NORMAL, MatchType.RANKED]:
+                continue
+
+            latest_player_match_stats_list.append(player_match_stats)
+            match_count += 1
+
+        return latest_player_match_stats_list
+
+    def get_stats_score(self, player_name: str) -> float | Error_Balancer:
+        target_player = self.get_player(player_name, request_api=True)
+        if isinstance(target_player, Error_Balancer):
+            return target_player
+
+        latest_player_match_stats_list: List[PlayerMatchStats] = self.get_latest_player_match_stats_list(
+            player_name, max_match_num=PUBG_Balancer.DEFAULT_MAX_MATCH_NUM
+        )
+        if isinstance(latest_player_match_stats_list, Error_Balancer):
+            return latest_player_match_stats_list
+
+        rounds_played = len(latest_player_match_stats_list)
+        if rounds_played == 0:
+            return PlayerMatchStatsNotFoundError_Balancer(message=f'{player_name} 플레이어의 최근 매치 정보를 가져오는 데 실패하였습니다.')
+        elif rounds_played < int(PUBG_Balancer.DEFAULT_MAX_MATCH_NUM / 2):
+            return PlayerMatchStatsNotEnoughError_Balancer(
+                message=f'충분한 수의 최근 매치 정보가 부족합니다. 현재 진행된 매치 수: {rounds_played} / {int(PUBG_Balancer.DEFAULT_MAX_MATCH_NUM / 2)}'
+            )
+
+        stats_score = self._calculate_stats_score(latest_player_match_stats_list)
+        kills = sum([match.kills for match in latest_player_match_stats_list])
+        deaths = sum([1 if match.win_place != 1 else 0 for match in latest_player_match_stats_list])
+        assists = sum([match.assists for match in latest_player_match_stats_list])
+        kda = (kills + assists) / deaths if deaths else 0.0
+        # stats = Stats(
+        #     rounds_played=rounds_played,
+        #     avg_rank=sum([match.win_place for match in latest_player_match_stats_list]) / rounds_played,
+        #     top10_ratio=sum([1 for match in latest_player_match_stats_list if match.win_place <= 10]) / rounds_played,
+        #     win_ratio=sum([1 for match in latest_player_match_stats_list if match.win_place == 1]) / rounds_played,
+        #     damage_dealt=sum([match.damage_dealt for match in latest_player_match_stats_list]),
+        #     kills=kills,
+        #     assists=deaths,
+        #     deaths=assists,
+        #     kda=kda,
+        #     score=stats_score,
+        # )
+        return stats_score
+
+    # def update_all_player_data(self, game_mode: GameMode = GameMode.SQUAD, max_match_num: int = 20) -> None:
+    #     for player in self._players:
+    #         cprint(f'{player.name} 플레이어 업데이트 시작', 'cyan', end='')
+    #         result = self.update_player_data(player_name=player.name, game_mode=game_mode, max_match_num=max_match_num)
+    #         if result.code == ErrorCode_Balancer.NO_ERROR:
+    #             cprint(f'\r{player.name} 플레이어 업데이트 완료. (stats_score: {player.stats_score})', 'green')
+    #         elif result.code == ErrorCode_Balancer.PLAYER_NOT_FOUND:
+    #             cprint(f'\r{result.message}', 'red')
+    #         elif result.code == ErrorCode_Balancer.INDEX_ERROR:
+    #             cprint(f'\rAPI request 데이터 인덱싱 에러)', 'red')
+    #         else:
+    #             cprint(f'\r{player.name} 알 수 없는 오류로 플레이어 업데이트 실패. \ntraceback: \n{result.message})', 'red')
 
 
 if __name__ == '__main__':
-    main()
+    # main()
 
-    # pubg_balancer = PUBG_Balancer(api_key=os.environ['PUBG_TOKEN'], platform='steam')
-    # player_name = 'SonPANG'
-    # pubg_balancer.add_player(player_name)
-    # pubg_balancer.update_player_data(player_name)
-    # print(f'{player_name}\'s stats score: {pubg_balancer.get_stats_score(player_name)}')
+    pubg_balancer = PUBG_Balancer(api_key=os.environ['PUBG_TOKEN'], platform='steam', db_init=False)
+    player_name = 'SonPANG'
+    stats_score = pubg_balancer.get_stats_score(player_name)
+    if not isinstance(stats_score, PlayerNotFoundError_Balancer):
+        print(f'{player_name}\'s stats score: {stats_score}')
+    else:
+        print(stats_score)
+
+    stats_score = pubg_balancer.get_stats_score(player_name)
+    if not isinstance(stats_score, PlayerNotFoundError_Balancer):
+        print(f'{player_name}\'s stats score: {stats_score}')
+    else:
+        print(stats_score)

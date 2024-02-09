@@ -72,6 +72,7 @@ class MatchType(Enum):
 
 class Tier(Enum):
     UNDEFINED = auto()
+    UNRANKED = 'unranked'
     BRONZE = 'bronze'
     SILVER = 'silver'
     GOLD = 'gold'

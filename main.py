@@ -28,7 +28,9 @@ async def main():
     if not DISCORD_TOKEN:
         cprint("DISCORD_TOKEN 환경 변수가 설정되지 않았습니다.", 'yellow')
         cprint("토큰을 설정하려면, 쉘의 설정 파일(.bashrc, .zshrc 등)에 다음을 추가하세요:", 'yellow')
+        cprint()
         cprint('    export DISCORD_TOKEN="your_token_here"', 'yellow')
+        cprint()
         cprint("이후 새 쉘 세션을 시작하거나 설정 파일을 재로드하세요. (`source ~/.bashrc` or `source ~/.zshrc`)", 'yellow')
         return  # 토큰이 없으면 여기서 종료
 
