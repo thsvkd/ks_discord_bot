@@ -5,12 +5,24 @@ from discord.ext import commands
 from ks_bot.ks_bot import KSBot
 from ks_bot.core.pubg_api import PUBG_Balancer
 from ks_bot.common.error import *
+from termcolor import cprint
 
 
 class Balancer(commands.Cog):
     def __init__(self, bot: KSBot):
         self.bot = bot
-        self.pubg_balancer = PUBG_Balancer(api_key=os.environ['PUBG_TOKEN'], platform='steam')
+
+        pubg_token = os.environ.get('PUBG_TOKEN')
+        if not pubg_token:
+            cprint("PUBG_TOKEN 환경 변수가 설정되지 않았습니다.", 'yellow')
+            cprint("토큰을 설정하려면, 쉘의 설정 파일(.bashrc, .zshrc 등)에 다음을 추가하세요:", 'yellow')
+            cprint('')
+            cprint('    export PUBG_TOKEN="your_token_here"', 'yellow')
+            cprint('')
+            cprint("이후 새 쉘 세션을 시작하거나 설정 파일을 재로드하세요. (`source ~/.bashrc` or `source ~/.zshrc`)", 'yellow')
+            raise ValueError("PUBG_TOKEN 환경 변수가 설정되지 않았습니다.")
+
+        self.pubg_balancer = PUBG_Balancer(api_key=pubg_token, platform='steam')
 
     # @commands.command(
     #     name="스탯",
