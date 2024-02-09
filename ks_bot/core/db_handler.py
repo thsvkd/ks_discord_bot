@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field, fields, is_dataclass, asdict
 from datetime import datetime, timedelta
 import json
+import os
 
 import sqlite3
 from sqlite3 import Error, Cursor
@@ -108,6 +109,7 @@ class SQLiteDBHandler:
             return None
 
     def init(self) -> 'SQLiteDBHandler':
+        os.makedirs('res', exist_ok=True)
         self._create_connection('res/history.db')
 
         self._execute_query(SQLiteDBHandler.SQL_DROP_PLAYERS_TABLE)
@@ -119,6 +121,7 @@ class SQLiteDBHandler:
         return self
 
     def open(self) -> 'SQLiteDBHandler':
+        os.makedirs('res', exist_ok=True)
         self._create_connection('res/history.db')
 
         self._execute_query(SQLiteDBHandler.SQL_CREATE_PLAYERS_TABLE)
