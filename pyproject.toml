@@ -6,12 +6,15 @@ authors = ["Your Name <thsxogud1123@gmail.com>"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-# 여기에 프로젝트의 다른 의존성 추가
-# 예: requests = "^2.25.1"
+"discord.py" = { version = "*", extras = ["voice"] }
+yt-dlp = "*" 
+youtube-search-python = "*"
+termcolor = "*"
+pytz = "*"
 
 [tool.poetry.dev-dependencies]
-# 개발 시 필요한 의존성 추가
-# 예: pytest = "^6.2.2"
+pytest = "*" 
+pytest-asyncio = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

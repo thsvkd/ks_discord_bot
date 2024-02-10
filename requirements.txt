@@ -1,5 +1,0 @@
-discord.py[voice]
-pytube
-youtube-search-python
-termcolor
-pytz
