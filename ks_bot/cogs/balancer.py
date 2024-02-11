@@ -24,7 +24,7 @@ class Balancer(commands.Cog):
             raise ValueError("PUBG_TOKEN 환경 변수가 설정되지 않았습니다.")
 
         self.pubg_balancer = PUBG_Balancer(api_key=pubg_token, platform='steam')
-        asyncio.get_running_loop().run_until_complete(self.pubg_balancer.connect_db())
+        asyncio.run(self.pubg_balancer.connect_db())
 
     # @commands.command(
     #     name="스탯",
