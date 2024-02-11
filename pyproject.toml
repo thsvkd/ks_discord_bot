@@ -11,6 +11,7 @@ yt-dlp = "*"
 youtube-search-python = "*"
 termcolor = "*"
 pytz = "*"
+aiosqlite = "*"
 aiohttp = "*"
 aiohttp_retry = "*"
 
