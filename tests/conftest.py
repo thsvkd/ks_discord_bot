@@ -32,3 +32,18 @@ async def pubg_balancer():
     platform = 'steam'
     async with PUBG_Balancer(api_key=api_key, platform=platform, db_init=True) as pubg_balancer:
         yield pubg_balancer
+
+
+def validate_dict_structure(schema: dict, target_dict: dict) -> bool:
+    for key, value_type in schema.items():
+        if key not in target_dict:
+            return False
+
+        actual_value = target_dict[key]
+        if isinstance(value_type, dict):
+            if not isinstance(actual_value, dict) or not validate_dict_structure(value_type, actual_value):
+                return False
+        else:
+            if not isinstance(actual_value, value_type):
+                return False
+    return True

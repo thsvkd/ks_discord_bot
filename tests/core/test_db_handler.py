@@ -230,3 +230,7 @@ async def test_update_player_match_stats(
     await db_handler.update_player_match_stats(input[1][1])
     result = await db_handler.get_player_match_stats(input[0][0].name, input[0][1].match_id)
     assert result == expected[1]
+
+
+if __name__ == '__main__':
+    pytest.main(['-sx', '-v', __file__])
