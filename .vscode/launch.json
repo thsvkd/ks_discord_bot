@@ -29,6 +29,58 @@
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "justMyCode": true
-    }
+    },
+    {
+      "name": "run test_db_handler.py",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/debug.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/tests",
+      "args": [
+        "-i",
+        "core/test_db_handler.py"
+      ],
+      "justMyCode": true
+    },
+    {
+      "name": "run test_get_youtube.py",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/debug.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/tests",
+      "args": [
+        "-i",
+        "core/test_get_youtube.py"
+      ],
+      "justMyCode": true
+    },
+    {
+      "name": "run test_pubg_balancer.py",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/debug.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/tests",
+      "args": [
+        "-i",
+        "core/test_pubg_balancer.py"
+      ],
+      "justMyCode": true
+    },
+    {
+      "name": "run test_request_handler.py",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/tests/debug.py",
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}/tests",
+      "args": [
+        "-i",
+        "core/test_request_handler.py"
+      ],
+      "justMyCode": true
+    },
   ]
 }

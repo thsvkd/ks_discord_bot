@@ -39,22 +39,19 @@ class APIRequestHandler:
             print("\nRate limit has been reset. Continuing with the requests.")
 
     async def request(
-        self, endpoint: str, method: HttpMethod = HttpMethod.GET, headers: dict = None, params: dict = None, data: dict = None, json: dict = None
+        self, endpoint: str, method: HttpMethod = HttpMethod.GET, header: dict = None, params: dict = None, data: dict = None, json: dict = None
     ) -> dict | ErrorCode_Balancer:
         url = f'{self.base_url}/{endpoint}'
-        default_headers = {"Authorization": f"Bearer {self.api_key}", "Accept": "application/vnd.api+json"}
-        if headers:
-            default_headers.update(headers)
 
         async with aiohttp.ClientSession() as session:
             client = RetryClient(client_session=session, retry_options=self.retry_options, raise_for_status=False)
             try:
-                async with client.request(method.value, url, headers=default_headers, params=params, json=json, data=data) as response:
+                async with client.request(method.value, url, headers=header, params=params, json=json, data=data) as response:
                     if response.status == 429:
                         self.remaining_requests = 0
                         self.rate_limit_reset_timestamp = float(response.headers.get('X-RateLimit-Reset', asyncio.get_event_loop().time())) + 1
                         await self.wait_for_rate_limit_reset()
-                        return await self.request(endpoint, method, headers, params, data, json)
+                        return await self.request(endpoint, method, header, params, data, json)
                     elif response.status == 404:
                         return ErrorCode_Balancer.PLAYER_NOT_FOUND
                     else:
@@ -77,7 +74,7 @@ if __name__ == "__main__":
         api_request_handler = APIRequestHandler(api_key=api_key, base_url=base_url)
 
         headers = {"Authorization": f"Bearer {api_request_handler.api_key}", "Accept": "application/vnd.api+json"}
-        response = await api_request_handler.request(endpoint='seasonss', method=HttpMethod.GET, headers=headers)
+        response = await api_request_handler.request(endpoint='seasonss', method=HttpMethod.GET, header=headers)
         print(response)
 
     asyncio.run(main())

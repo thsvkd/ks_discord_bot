@@ -24,7 +24,7 @@ async def load_extensions():
 
 
 async def main() -> None:
-    DISCORD_TOKEN = get_pubg_token()
+    DISCORD_TOKEN = get_discord_token()
 
     async with bot:
         await load_extensions()

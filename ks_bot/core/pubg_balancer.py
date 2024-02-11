@@ -34,9 +34,9 @@ class PUBG_Balancer:
 
     #### request functions
 
-    async def _request(self, endpoint: str, headers: dict = None, params: dict = None, data: dict = None, json: dict = None) -> dict | Error_Balancer:
+    async def _request(self, endpoint: str, params: dict = None, data: dict = None, json: dict = None) -> dict | Error_Balancer:
         result = await self._api_request_handler.request(
-            endpoint=endpoint, method=HttpMethod.GET, headers=headers, params=params, data=data, json=json
+            endpoint=endpoint, method=HttpMethod.GET, header=self._header, params=params, data=data, json=json
         )
         if not isinstance(result, ErrorCode_Balancer):
             cprint(f"API 요청 성공: {endpoint}", 'green')

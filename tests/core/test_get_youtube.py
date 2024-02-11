@@ -54,3 +54,7 @@ async def test_get_youtube_with_url(input, expected):
 async def test_get_youtube_with_query(input, expected):
     info = await get_youtube(input)
     assert expected in info['title']
+
+
+if __name__ == '__main__':
+    pytest.main(['-sx', '-v', __file__])
