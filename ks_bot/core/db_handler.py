@@ -237,20 +237,29 @@ class SQLiteDBHandler:
         else:
             return PlayerNotFoundError_Balancer(f"Player not found: {normalized_id or player_name}")
 
-    async def is_player_match_stats_exists(self, match_id: str) -> bool:
-        if not match_id:
-            raise ValueError("match_id must be provided.")
+    async def is_player_match_stats_exists(self, player_name: str, match_id: str) -> bool:
+        if not match_id or not player_name:
+            raise ValueError("Both 'player_name' and 'match_id' must be provided.")
 
-        query = "SELECT COUNT(*) FROM player_match_stats WHERE match_id = ?"
-        params = (match_id,)
+        query = "SELECT COUNT(*) FROM player_match_stats WHERE player_name = ? AND match_id = ?"
+        params = (
+            player_name,
+            match_id,
+        )
 
         async with self.conn.execute(query, params) as cursor:
             count = (await cursor.fetchone())[0]
 
         return count > 0
 
-    async def get_player_match_stats(self, match_id: str) -> PlayerMatchStats | Error_Balancer:
-        async with self.conn.execute("SELECT * FROM player_match_stats WHERE match_id = ?", (match_id,)) as cursor:
+    async def get_player_match_stats(self, player_name: str, match_id: str) -> PlayerMatchStats | Error_Balancer:
+        async with self.conn.execute(
+            "SELECT * FROM player_match_stats WHERE player_name = ? AND match_id = ?",
+            (
+                player_name,
+                match_id,
+            ),
+        ) as cursor:
             row = await cursor.fetchone()
 
         if row:

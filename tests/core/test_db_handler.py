@@ -99,7 +99,7 @@ async def test_is_player_exists(db_handler: SQLiteDBHandler, input: Tuple[Player
 async def test_insert_fetch_player_match_stats(db_handler: SQLiteDBHandler, input: Tuple[Player, PlayerMatchStats], expected: PlayerMatchStats):
     await db_handler.insert_player(input[0])
     await db_handler.insert_player_match_stats(input[1])
-    result = await db_handler.get_player_match_stats(input[1].match_id)
+    result = await db_handler.get_player_match_stats(input[0].name, input[1].match_id)
     assert result == expected[1]
 
 
@@ -155,7 +155,7 @@ async def test_is_player_match_stats_exists(
 
         await db_handler.insert_player_match_stats(player_match_stats)
 
-    result = await db_handler.is_player_match_stats_exists(expected[0][1].match_id)
+    result = await db_handler.is_player_match_stats_exists(expected[0][0].name, expected[0][1].match_id)
     assert result == expected[1]
 
 
@@ -228,5 +228,5 @@ async def test_update_player_match_stats(
     await db_handler.insert_player(input[0][0])
     await db_handler.insert_player_match_stats(input[0][1])
     await db_handler.update_player_match_stats(input[1][1])
-    result = await db_handler.get_player_match_stats(input[0][1].match_id)
+    result = await db_handler.get_player_match_stats(input[0][0].name, input[0][1].match_id)
     assert result == expected[1]

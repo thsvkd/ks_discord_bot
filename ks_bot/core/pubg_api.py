@@ -13,7 +13,6 @@ from ks_bot.core.db_handler import SQLiteDBHandler
 
 
 class PUBG_Balancer:
-    DEFAULT_UPDATE_INTERVAL = timedelta(days=7)
     DEFAULT_MAX_MATCH_NUM = 20
     DEFAULT_DB_PATH = 'res/history.db'
 
@@ -232,8 +231,8 @@ class PUBG_Balancer:
         return player
 
     async def get_player_match_stats(self, player_name: str, match_id: str) -> PlayerMatchStats | Error_Balancer:
-        if await self._db_handler.is_player_match_stats_exists(match_id):
-            player_match_stats = await self._db_handler.get_player_match_stats(match_id)
+        if await self._db_handler.is_player_match_stats_exists(player_name, match_id):
+            player_match_stats = await self._db_handler.get_player_match_stats(player_name, match_id)
             return player_match_stats
 
         match = await self._request_match(match_id)
@@ -274,7 +273,7 @@ class PUBG_Balancer:
 
         return latest_player_match_stats_list
 
-    async def get_stats_score(self, player_name: str) -> float | Error_Balancer:
+    async def get_stats(self, player_name: str) -> Stats | Error_Balancer:
         target_player = await self.get_player(player_name, request_api=True)
         if isinstance(target_player, Error_Balancer):
             return target_player
@@ -298,49 +297,31 @@ class PUBG_Balancer:
         deaths = sum([1 if match.win_place != 1 else 0 for match in latest_player_match_stats_list])
         assists = sum([match.assists for match in latest_player_match_stats_list])
         kda = (kills + assists) / deaths if deaths else 0.0
-        # stats = Stats(
-        #     rounds_played=rounds_played,
-        #     avg_rank=sum([match.win_place for match in latest_player_match_stats_list]) / rounds_played,
-        #     top10_ratio=sum([1 for match in latest_player_match_stats_list if match.win_place <= 10]) / rounds_played,
-        #     win_ratio=sum([1 for match in latest_player_match_stats_list if match.win_place == 1]) / rounds_played,
-        #     damage_dealt=sum([match.damage_dealt for match in latest_player_match_stats_list]),
-        #     kills=kills,
-        #     assists=deaths,
-        #     deaths=assists,
-        #     kda=kda,
-        #     score=stats_score,
-        # )
-        return stats_score
-
-    # def update_all_player_data(self, game_mode: GameMode = GameMode.SQUAD, max_match_num: int = 20) -> None:
-    #     for player in self._players:
-    #         cprint(f'{player.name} 플레이어 업데이트 시작', 'cyan', end='')
-    #         result = self.update_player_data(player_name=player.name, game_mode=game_mode, max_match_num=max_match_num)
-    #         if result.code == ErrorCode_Balancer.NO_ERROR:
-    #             cprint(f'\r{player.name} 플레이어 업데이트 완료. (stats_score: {player.stats_score})', 'green')
-    #         elif result.code == ErrorCode_Balancer.PLAYER_NOT_FOUND:
-    #             cprint(f'\r{result.message}', 'red')
-    #         elif result.code == ErrorCode_Balancer.INDEX_ERROR:
-    #             cprint(f'\rAPI request 데이터 인덱싱 에러)', 'red')
-    #         else:
-    #             cprint(f'\r{player.name} 알 수 없는 오류로 플레이어 업데이트 실패. \ntraceback: \n{result.message})', 'red')
+        stats = Stats(
+            rounds_played=rounds_played,
+            avg_rank=sum([match.win_place for match in latest_player_match_stats_list]) / rounds_played,
+            top10_ratio=sum([1 for match in latest_player_match_stats_list if match.win_place <= 10]) / rounds_played,
+            win_ratio=sum([1 for match in latest_player_match_stats_list if match.win_place == 1]) / rounds_played,
+            damage_dealt=sum([match.damage_dealt for match in latest_player_match_stats_list]),
+            kills=kills,
+            assists=deaths,
+            deaths=assists,
+            kda=kda,
+            score=stats_score,
+        )
+        return stats
 
 
 if __name__ == '__main__':
 
     async def main(player_name):
         async with PUBG_Balancer(api_key=os.environ['PUBG_TOKEN'], platform='steam', db_init=False) as pubg_balancer:
-            stats_score = await pubg_balancer.get_stats_score(player_name)
-            if not isinstance(stats_score, PlayerNotFoundError_Balancer):
-                print(f'{player_name}\'s stats score: {stats_score}')
-            else:
-                print(stats_score)
+            stats = await pubg_balancer.get_stats(player_name)
+            return stats
 
-            return await pubg_balancer.get_stats_score(player_name)
-
-    player_name = 'SonPANG'
-    stats_score = asyncio.run(main(player_name))
-    if not isinstance(stats_score, PlayerNotFoundError_Balancer):
-        print(f'{player_name}\'s stats score: {stats_score}')
+    player_name = 'Sodaman89'
+    stats = asyncio.run(main(player_name))
+    if not isinstance(stats, PlayerNotFoundError_Balancer):
+        print(f'{player_name}\'s stats score: {stats.score}')
     else:
-        print(stats_score)
+        print(stats)
