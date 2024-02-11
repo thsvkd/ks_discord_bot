@@ -319,7 +319,7 @@ if __name__ == '__main__':
             stats = await pubg_balancer.get_stats(player_name)
             return stats
 
-    player_name = 'Sodaman89'
+    player_name = 'SonPANG'
     stats = asyncio.run(main(player_name))
     if not isinstance(stats, PlayerNotFoundError_Balancer):
         print(f'{player_name}\'s stats score: {stats.score}')

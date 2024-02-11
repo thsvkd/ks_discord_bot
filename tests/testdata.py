@@ -118,6 +118,16 @@ class TestData_Player:
         match_list=[],
     )
 
+    REAL_PLAYER1 = Player(
+        id='account.5033b58b23644c7eab7bf33781ad762a',
+        normalized_id='5033b58b23644c7eab7bf33781ad762a',
+        name='SonPANG',
+        platform='steam',
+        ban_type='Innocent',
+        clan_id='clan.fab1814f906d49b08d77b3adb783cc24',
+        match_list=[],
+    )
+
 
 class TestData_PlayerMatchStats:
     EXAMPLE_PLAYER_MATCH_STATS1 = (

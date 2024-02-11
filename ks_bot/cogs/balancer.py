@@ -3,7 +3,7 @@ import os
 from discord.ext import commands
 
 from ks_bot.ks_bot import KSBot
-from ks_bot.core.pubg_api import PUBG_Balancer
+from ks_bot.core.pubg_balancer import PUBG_Balancer
 from ks_bot.common.error import *
 from termcolor import cprint
 import asyncio
@@ -29,9 +29,12 @@ class Balancer(commands.Cog):
     async def on_ready(self):
         await self.pubg_balancer.connect_db()
 
+    async def cog_unload(self):
+        await self.pubg_balancer.close_db()
+
     # @commands.command(
     #     name="스탯",
-    #     help="유저의 스탯을 출력합니다.",
+    #     help="유저의 스탯을 출력합async니다.",
     #     description="유저의 스탯을 출력합니다.",
     #     aliases=['실력'],
     # )
