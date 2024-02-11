@@ -6,6 +6,7 @@ from ks_bot.ks_bot import KSBot
 from ks_bot.core.pubg_api import PUBG_Balancer
 from ks_bot.common.error import *
 from termcolor import cprint
+import asyncio
 
 
 class Balancer(commands.Cog):
@@ -23,6 +24,7 @@ class Balancer(commands.Cog):
             raise ValueError("PUBG_TOKEN 환경 변수가 설정되지 않았습니다.")
 
         self.pubg_balancer = PUBG_Balancer(api_key=pubg_token, platform='steam')
+        asyncio.get_running_loop().run_until_complete(self.pubg_balancer.connect_db())
 
     # @commands.command(
     #     name="스탯",
@@ -42,11 +44,15 @@ class Balancer(commands.Cog):
         aliases=['실력', '스탯점수', '실력점수'],
     )
     async def player_stats_score(self, ctx: commands.Context, player_name: str):
-        stats_score = self.pubg_balancer.get_stats_score(player_name)
-        if isinstance(stats_score, Error_Balancer):
-            await ctx.send(f"{player_name}의 스탯 점수를 가져오는데 실패했습니다. \nerror: {stats_score.message}")
-        else:
-            await ctx.send(f"{player_name}의 스탯 점수는 {stats_score:.04f} 입니다.")
+        try:
+            stats_score = self.pubg_balancer.get_stats_score(player_name)
+            if isinstance(stats_score, Error_Balancer):
+                await ctx.send(f"{player_name}의 스탯 점수를 가져오는데 실패했습니다. \nerror: {stats_score.message}")
+            else:
+                await ctx.send(f"{player_name}의 스탯 점수는 {stats_score:.04f} 입니다.")
+        except Exception as e:
+            # TODO: 에러 핸들링 추가
+            pass
 
 
 async def setup(bot: KSBot):

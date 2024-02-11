@@ -45,7 +45,7 @@ def parse_utc_to_datetime(utc_str, tz_str: Timezone = Timezone.KST) -> datetime:
     if utc_time.tzinfo is None:
         utc_time = utc_time.replace(tzinfo=pytz.utc)
 
-    target_tz = pytz.timezone(tz_str.value)
+    target_tz = tz_str.to_pytz_timezone()
     converted_time = utc_time.astimezone(target_tz)
 
     return converted_time

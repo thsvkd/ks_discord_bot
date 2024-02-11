@@ -15,6 +15,7 @@ from ks_bot.common.common import *
 class PUBG_Balancer:
     DEFAULT_UPDATE_INTERVAL = timedelta(days=7)
     DEFAULT_MAX_MATCH_NUM = 20
+    DEFAULT_DB_PATH = 'res/history.db'
 
     def __init__(self, api_key: str, platform: str = 'steam', db_init: bool = False):
         self._api_key = api_key
@@ -22,13 +23,10 @@ class PUBG_Balancer:
         self._header = {"Authorization": f"Bearer {self._api_key}", "Accept": "application/vnd.api+json"}
         self._base_url = f'https://api.pubg.com/shards/{self._platform}'
         self._api_request_handler = APIRequestHandler(api_key=self._api_key, base_url=self._base_url)
+        self._db_handler = SQLiteDBHandler(PUBG_Balancer.DEFAULT_DB_PATH)
+        self._db_init = db_init
 
-        if db_init:
-            self._db_handler = SQLiteDBHandler().init()
-        else:
-            self._db_handler = SQLiteDBHandler().open()
-
-    #### request functions #####################################################################################################################################
+    #### request functions
 
     def _request(self, endpoint: str, headers: dict = None, params: dict = None, data: dict = None, json: dict = None) -> dict | Error_Balancer:
         result = self._api_request_handler.request(endpoint=endpoint, method=HttpMethod.GET, headers=headers, params=params, data=data, json=json)
@@ -146,7 +144,7 @@ class PUBG_Balancer:
 
         return match.get_match_by_player_name(player_name)
 
-    #### util functions ##################################################################################################################################
+    #### util functions
 
     def _parse_player_id(self, player_id: str) -> str:
         if 'account.' in player_id:
@@ -177,7 +175,13 @@ class PUBG_Balancer:
 
         return total_score / len(latest_player_match_stats_list)
 
-    #### DB functions ##################################################################################################################################
+    #### DB functions
+
+    def connect_db(self) -> None:
+        if self._db_init:
+            self._db_handler.init()
+        else:
+            self._db_handler.open()
 
     def find_player(self, player_name: str) -> Player | Error_Balancer:
         return self._db_handler.get_player(player_name=player_name)
@@ -186,7 +190,7 @@ class PUBG_Balancer:
         return self._db_handler.player_exists(player_name=player_name)
 
     def is_player_data_outdated(self, player_name: str, update_interval: timedelta = timedelta(days=7)) -> bool | Error_Balancer:
-        return self._db_handler.is_player_data_outdated(player_name=player_name, update_interval=update_interval)
+        return self._db_handler.is_player_data_outdated(player_name=player_name, expiration_period=update_interval)
 
     def update_player(self, player: Player) -> None:
         self._db_handler.update_player(player=player)
@@ -201,7 +205,7 @@ class PUBG_Balancer:
     # def remove_player(self, player_name: str) -> None:
     #     pass
 
-    #### public functions ##################################################################################################################################
+    #### public functions
 
     def get_player(self, player_name: str, request_api: bool = False) -> Player | Error_Balancer:
         player = self._request_player(player_name) if request_api else self.find_player(player_name)
