@@ -3,9 +3,10 @@ import os
 from discord.ext import commands
 
 from ks_bot.ks_bot import KSBot
-from ks_bot.core.pubg_api import PUBG_Balancer
+from ks_bot.core.pubg_balancer import PUBG_Balancer
 from ks_bot.common.error import *
 from termcolor import cprint
+import asyncio
 
 
 class Balancer(commands.Cog):
@@ -24,9 +25,16 @@ class Balancer(commands.Cog):
 
         self.pubg_balancer = PUBG_Balancer(api_key=pubg_token, platform='steam')
 
+    @commands.Cog.listener()
+    async def on_ready(self):
+        await self.pubg_balancer.connect_db()
+
+    async def cog_unload(self):
+        await self.pubg_balancer.close_db()
+
     # @commands.command(
     #     name="스탯",
-    #     help="유저의 스탯을 출력합니다.",
+    #     help="유저의 스탯을 출력합async니다.",
     #     description="유저의 스탯을 출력합니다.",
     #     aliases=['실력'],
     # )
@@ -42,11 +50,15 @@ class Balancer(commands.Cog):
         aliases=['실력', '스탯점수', '실력점수'],
     )
     async def player_stats_score(self, ctx: commands.Context, player_name: str):
-        stats_score = self.pubg_balancer.get_stats_score(player_name)
-        if isinstance(stats_score, Error_Balancer):
-            await ctx.send(f"{player_name}의 스탯 점수를 가져오는데 실패했습니다. \nerror: {stats_score.message}")
-        else:
-            await ctx.send(f"{player_name}의 스탯 점수는 {stats_score:.04f} 입니다.")
+        try:
+            stats = await self.pubg_balancer.get_stats(player_name)
+            if isinstance(stats, Error_Balancer):
+                await ctx.send(f"{player_name}의 스탯 점수를 가져오는데 실패했습니다. \nerror: {stats.message}")
+            else:
+                await ctx.send(f"{player_name}의 스탯 점수는 {stats.score:.04f} 입니다.")
+        except Exception as e:
+            # TODO: 에러 핸들링 추가
+            pass
 
 
 async def setup(bot: KSBot):

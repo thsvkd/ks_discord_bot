@@ -11,6 +11,8 @@ yt-dlp = "*"
 youtube-search-python = "*"
 termcolor = "*"
 pytz = "*"
+aiohttp = "*"
+aiohttp_retry = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*" 

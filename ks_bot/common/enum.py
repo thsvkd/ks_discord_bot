@@ -44,7 +44,7 @@ class GameMode(Enum):
     ZOMBIE_SQUAD_FPP = 'zombie-squad-fpp'
 
     @classmethod
-    def from_string(cls, value: str):
+    def from_string(cls, value: str = ''):
         for member in cls:
             if member.value == value:
                 return member
@@ -63,7 +63,7 @@ class MatchType(Enum):
     RANKED = 'competitive'
 
     @classmethod
-    def from_string(cls, value: str):
+    def from_string(cls, value: str = ''):
         for member in cls:
             if member.value == value:
                 return member
@@ -81,7 +81,7 @@ class Tier(Enum):
     MASTER = 'master'
 
     @classmethod
-    def from_string(cls, value: str):
+    def from_string(cls, value: str = ''):
         for member in cls:
             if member.value == value:
                 return member
