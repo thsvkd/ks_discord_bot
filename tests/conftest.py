@@ -1,8 +1,9 @@
 import pytest
+import os
 
 from ks_bot.core.db_handler import SQLiteDBHandler
+from ks_bot.core.request_handler import APIRequestHandler, HttpMethod
 
-# 테스트를 위한 임시 데이터베이스 파일 경로
 TEST_DB = 'test_history.db'
 PARAMETRIZE_INDICATOR = 'input, expected'
 
@@ -13,3 +14,12 @@ async def db_handler():
     await handler.init()
     yield handler
     await handler.close()
+
+
+@pytest.fixture
+async def api_request_handler():
+    api_key = os.environ.get('PUBG_TOKEN')
+    platform = 'steam'
+    base_url = f'https://api.pubg.com/shards/{platform}'
+    api_request_handler = APIRequestHandler(api_key=api_key, base_url=base_url)
+    return api_request_handler
