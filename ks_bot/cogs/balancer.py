@@ -83,7 +83,9 @@ class Balancer(commands.Cog):
             embed = discord.Embed(
                 title="삐삑! 전투력 측정 중...", description="매치정보를 받아오는 중입니다, 잠시만 기다려주세요...", color=embed_color
             )
-            embed.set_image(url='https://drive.google.com/file/d/1limriS7qLdNKEwd6MdfFKODoySDfgEhc/view?usp=sharing')
+            embed.set_image(
+                url='https://lh3.googleusercontent.com/u/0/drive-viewer/AEYmBYRiFGFgeh92WnsjsTBvEi1rxCKjEpbAYq3pi5FBM_asqA6nKFIOl885D9WzQJ6dC0Fj43nAGt0KQhOvtvlr1desweLuHQ=w2560-h1271'
+            )
             message = await ctx.send(embed=embed)
             await asyncio.sleep(1)
 
@@ -96,28 +98,36 @@ class Balancer(commands.Cog):
                     description=stats_description,
                     color=embed_color,
                 )
-                new_embed.set_image(url='https://drive.google.com/file/d/18w2ct3QKB9uBzMOG4n-dG0rdviBAc0WR/view?usp=sharing')
+                new_embed.set_image(
+                    url='https://lh3.googleusercontent.com/u/0/drive-viewer/AEYmBYT7wt9V9d2PPR9BtqUb8beBULaeOCLojdCNPMdy5SZ0fOEzCuIS_v0f09CwtrnS8cDXeKGl7_m7EyGij9Fh1_i_VPOZRw=w2560-h1271'
+                )
             elif 5 <= stats.score < 10:
                 new_embed = discord.Embed(
                     title="전투력 측정 완료! 좀 치는 녀석이군...",
                     description=stats_description,
                     color=embed_color,
                 )
-                new_embed.set_image(url='https://drive.google.com/file/d/10xlxf4frQuA393OKBZ8mdUloIduYEK_6/view?usp=sharing')
+                new_embed.set_image(
+                    url='https://lh3.googleusercontent.com/u/0/drive-viewer/AEYmBYR1jHdQyQMvviH3lMQbCO8Q3qgOaFYBFGZ9qlOEOy7ikThM56R2L_PIyT2jkEpzYac0TZOPT9L09Fijb9VqIUOiYd0syw=w2560-h1271'
+                )
             elif 10 <= stats.score < 15:
                 new_embed = discord.Embed(
                     title="전투력 측정 완료! 이, 이녀석 조심해야겠어...!",
                     description=stats_description,
                     color=embed_color,
                 )
-                new_embed.set_image(url='https://drive.google.com/file/d/1LEIsR0ZbxWqE2oC98bUFJR2nlB7b0adx/view?usp=sharing')
+                new_embed.set_image(
+                    url='https://lh3.googleusercontent.com/u/0/drive-viewer/AEYmBYRkUJv1XYMkyn4a-NPazFnnNQ09O7jTLBppgpjTxlpkJ1smPqIa2sJlBgurJP042ax5HfwTMnziXCdnHRbEt74WZS8low=w2560-h1271'
+                )
             elif 15 <= stats.score:
                 new_embed = discord.Embed(
                     title="전투력 측정 완료! 스카우터가... 터져버렸어?!?",
                     description=stats_description,
                     color=embed_color,
                 )
-                new_embed.set_image(url='https://drive.google.com/file/d/1HpEUmh9zy0H4KXHjtOY8PJhomhIzt-U2/view?usp=sharing')
+                new_embed.set_image(
+                    url='https://lh3.googleusercontent.com/u/0/drive-viewer/AEYmBYQ3qw-Prf9G2V758nIn1Xzx3YLe5RTCI-ibi4Q7rtYHqC8283wYpqV0oS8PkNsyjwJGJWUOjOcf_ou1T9YnQ2PMyroC_w=w2560-h1271'
+                )
             await message.edit(embed=new_embed)
         except PlayerNotFoundError_Balancer as e:
             print_error(e)
