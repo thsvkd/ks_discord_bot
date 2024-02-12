@@ -23,6 +23,23 @@ class Balancer(commands.Cog):
     async def cog_unload(self):
         await self.pubg_balancer.close_db()
 
+    async def input_to_player_name(self, ctx: commands.Context, input: Union[discord.Member, str]) -> str:
+        if input:
+            if input.startswith("<@") and input.endswith(">"):
+                member_id = input.strip("<@!>")
+                member = ctx.guild.get_member(int(member_id))
+                if member:
+                    player_name = member.display_name.split('|')[1].strip()
+                else:
+                    await ctx.send("멤버를 찾을 수 없습니다.")
+                    return
+            else:
+                player_name = input
+        else:
+            player_name = ctx.author.display_name
+
+        return player_name
+
     # @commands.command(
     #     name="스탯",
     #     help="유저의 스탯을 출력합async니다.",
@@ -40,10 +57,12 @@ class Balancer(commands.Cog):
         description="유저의 스탯 점수를 출력합니다.",
         aliases=['실력', '스탯점수', '실력점수'],
     )
-    async def player_stats_score(self, ctx: commands.Context, player_name: str):
+    async def player_stats_score(self, ctx: commands.Context, *, input: str = None):
+        # async def player_stats_score(self, ctx: commands.Context, player_name: str):
         embed_color = 0xD04848
 
         try:
+            player_name = await self.input_to_player_name(ctx, input)
             stats_future = self.pubg_balancer.get_stats(player_name)
             embed = discord.Embed(
                 title="삐삑! 전투력 측정 중...", description="매치정보를 받아오는 중입니다, 잠시만 기다려주세요...", color=embed_color
@@ -52,7 +71,7 @@ class Balancer(commands.Cog):
             message = await ctx.send(embed=embed)
             await asyncio.sleep(1)
 
-            # await ctx.send(f"{player_name}의 스탯 점수는 {stats.score:.04f} 입니다.")
+            # await ctx.send(f"{player_name}의 스탯 점수는 {stats.sco re:.04f} 입니다.")
             stats = await stats_future
             stats_description = f"**`{player_name}`**의 스탯 점수는 **`{stats.score:.04f}`** 입니다."
             if 0 < stats.score < 5:
@@ -90,8 +109,9 @@ class Balancer(commands.Cog):
                     url='https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Ft1.daumcdn.net%2Fcfile%2Ftistory%2F164A97034C02CC0F1E'
                 )
             await message.edit(embed=new_embed)
-        except Error_Balancer as e:
+        except PlayerNotFoundError_Balancer as e:
             print_error(e)
+            await message.edit(content=f"플레이어 `{player_name}`을 찾을 수 없습니다.", embed=None)
         except Exception as e:
             print_error(e)
 
