@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "ks_bot"
-version = "0.1.3"
+version = "0.1.4"
 description = "ks_bot"
 authors = ["Your Name <thsxogud1123@gmail.com>"]
 
