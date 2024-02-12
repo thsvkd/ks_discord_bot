@@ -57,6 +57,22 @@ class PUBG_Balancer:
         except PlayerNotFoundError_Balancer:
             raise PlayerNotFoundError_Balancer(player_name=player_name)
 
+    async def _request_single_player(self, player_id: str) -> Player:
+        try:
+            player_data = await self._request(f'players/{player_id}')
+            player = Player(
+                id=player_data['data']['id'],
+                normalized_id=self._parse_player_id(player_data['data']['id']),
+                name=player_data['data']['attributes']['name'],
+                platform=player_data['data']['attributes']['shardId'],
+                ban_type=player_data['data']['attributes']['banType'],
+                clan_id=player_data['data']['attributes']['clanId'],
+                match_list=[match for match in player_data['data']['relationships']['matches']['data'] if match['type'] == 'match'],
+            )
+            return player
+        except PlayerNotFoundError_Balancer:
+            raise PlayerNotFoundError_Balancer(player_name=player_name)
+
     async def _request_seasons_data(self) -> str:
         season_data = await self._request('seasons')
 

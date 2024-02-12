@@ -12,6 +12,8 @@ import asyncio
 
 
 class Balancer(commands.Cog):
+    PUBG_APP_NAME = 'PUBG: BATTLEGROUNDS'
+
     def __init__(self, bot: KSBot):
         self.bot = bot
         self.pubg_balancer = PUBG_Balancer(api_key=get_pubg_token(), platform='steam')
@@ -23,22 +25,36 @@ class Balancer(commands.Cog):
     async def cog_unload(self):
         await self.pubg_balancer.close_db()
 
+    def parse_display_name(self, display_name: str) -> str:
+        return display_name.split('|')[1].strip()
+
     async def input_to_player_name(self, ctx: commands.Context, input: Union[discord.Member, str]) -> str:
         if input:
-            if input.startswith("<@") and input.endswith(">"):
-                member_id = input.strip("<@!>")
-                member = ctx.guild.get_member(int(member_id))
-                if member:
-                    player_name = member.display_name.split('|')[1].strip()
-                else:
-                    await ctx.send("멤버를 찾을 수 없습니다.")
-                    return
-            else:
+            if not (input.startswith("<@") and input.endswith(">")):
                 player_name = input
+                return player_name
+
+            member_id = input.strip("<@!>")
+            member = ctx.guild.get_member(int(member_id))
+
+            if not member:
+                raise PlayerNotFoundError_Balancer(player_name=input)
+
+            if member.activity == None or not Balancer.PUBG_APP_NAME == member.activity.name:
+                player_name = self.parse_display_name(member.display_name)
+                return player_name
+
+            try:
+                player_id = member.activity.party['id'].split('-')[0]
+                player = await self.pubg_balancer._request_single_player(player_id)
+                player_name = player.name
+                return player_name
+            except PlayerNotFoundError_Balancer:
+                player_name = self.parse_display_name(member.display_name)
+                return player_name
         else:
             player_name = ctx.author.display_name
-
-        return player_name
+            return player_name
 
     # @commands.command(
     #     name="스탯",
