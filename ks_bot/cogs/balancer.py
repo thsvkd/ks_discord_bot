@@ -7,7 +7,7 @@ from ks_bot.ks_bot import KSBot
 from ks_bot.core.pubg_balancer import PUBG_Balancer
 from ks_bot.common.error import *
 from ks_bot.utils import *
-from termcolor import cprint
+from typing import Union, Tuple
 import asyncio
 
 
@@ -25,36 +25,46 @@ class Balancer(commands.Cog):
     async def cog_unload(self):
         await self.pubg_balancer.close_db()
 
-    def parse_display_name(self, display_name: str) -> str:
+    def parse_discord_display_name(self, display_name: str) -> str:
         return display_name.split('|')[1].strip()
 
-    async def input_to_player_name(self, ctx: commands.Context, input: Union[discord.Member, str]) -> str:
+    def parse_discord_id(self, input: str) -> str | None:
+        if input.startswith("<@") and input.endswith(">"):
+            return input.strip("<@!>")
+
+    async def parse_command_input(self, ctx: commands.Context, input: Union[discord.Member, str]) -> Tuple[str, str | None]:
         if input:
-            if not (input.startswith("<@") and input.endswith(">")):
+            discord_id = self.parse_discord_id(input)
+            if not discord_id:
+                # if input is not `@mention`, input is raw player name
                 player_name = input
-                return player_name
+                return player_name, discord_id
 
-            member_id = input.strip("<@!>")
-            member = ctx.guild.get_member(int(member_id))
-
-            if not member:
+            discord_member = ctx.guild.get_member(int(discord_id))
+            if not discord_member:
+                # discord_member is not exist in the server
                 raise PlayerNotFoundError_Balancer(player_name=input)
 
-            if member.activity == None or not Balancer.PUBG_APP_NAME == member.activity.name:
-                player_name = self.parse_display_name(member.display_name)
-                return player_name
+            try:
+                player_name = await self.pubg_balancer.get_player_name_by_discord_id(discord_id=discord_id)
+                return player_name, discord_id
+            except PlayerNotFoundError_Balancer:
+                if discord_member.activity == None or not Balancer.PUBG_APP_NAME == discord_member.activity.name:
+                    player_name = self.parse_discord_display_name(discord_member.display_name)
+                    return player_name, discord_id
 
             try:
-                player_id = member.activity.party['id'].split('-')[0]
+                player_id = discord_member.activity.party['id'].split('-')[0]
                 player = await self.pubg_balancer._request_single_player(player_id)
                 player_name = player.name
-                return player_name
+                return player_name, discord_id
             except PlayerNotFoundError_Balancer:
-                player_name = self.parse_display_name(member.display_name)
-                return player_name
+                player_name = self.parse_discord_display_name(discord_member.display_name)
+                return player_name, discord_id
         else:
+            discord_id = None
             player_name = ctx.author.display_name
-            return player_name
+            return player_name, discord_id
 
     # @commands.command(
     #     name="스탯",
@@ -78,8 +88,10 @@ class Balancer(commands.Cog):
         embed_color = 0xD04848
 
         try:
-            player_name = await self.input_to_player_name(ctx, input)
+            player_name, discord_id = await self.parse_command_input(ctx, input)
+            await self.pubg_balancer.update_discord_id(player_name, discord_id)
             stats_future = self.pubg_balancer.get_stats(player_name)
+
             embed = discord.Embed(
                 title="삐삑! 전투력 측정 중...", description="매치정보를 받아오는 중입니다, 잠시만 기다려주세요...", color=embed_color
             )

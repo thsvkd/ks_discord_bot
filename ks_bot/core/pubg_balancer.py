@@ -185,6 +185,15 @@ class PUBG_Balancer:
     async def insert_player(self, player: Player) -> None:
         await self._db_handler.insert_player(player=player)
 
+    async def update_discord_id(self, player_name: str, discord_id: int) -> None:
+        await self._db_handler.update_discord_id(player_name=player_name, discord_id=discord_id)
+
+    async def get_discord_id(self, player_name: str) -> int:
+        return await self._db_handler.get_discord_id(player_name=player_name)
+
+    async def get_player_name_by_discord_id(self, discord_id: int) -> str:
+        return await self._db_handler.get_player_name_by_discord_id(discord_id=discord_id)
+
     # TODO: 아래 함수는 유저 밸런스 조정을 위해 사용자를 추가하기 위해 사용하는 것으로 변경해야함
     # def add_player(self, player_name: str) -> None:
     #     pass

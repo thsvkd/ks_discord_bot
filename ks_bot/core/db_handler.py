@@ -15,6 +15,7 @@ from typing import Any
 class Player_DB:
     player: Player = field(default_factory=Player)
     updated_date: datetime = field(default_factory=unix_time_start)
+    discord_id: str = ''
 
 
 @dataclass
@@ -97,7 +98,7 @@ class SQLiteDBHandler:
 
     async def _execute_query(self, query: str, params=None):
         async with self.conn.execute(query, params or ()) as cursor:
-            if query.strip().upper().startswith("SELECT"):
+            if query.strip().upper().startswith("SELECT") or query.strip().upper().startswith("PRAGMA"):
                 return await cursor.fetchall()
             else:
                 await self.conn.commit()
@@ -167,6 +168,30 @@ class SQLiteDBHandler:
         else:
             raise PlayerNotFoundError_Balancer
 
+    async def compare_and_update_structure(self, table_name: str, create_table_sql: str):
+        # 기존 테이블 구조를 가져오는 SQL
+        query = f"PRAGMA table_info({table_name})"
+        existing_columns = [row[1] for row in await self._execute_query(query)]
+
+        # 새로운 테이블 구조에서 컬럼 추출
+        new_columns = [part.split()[0] for part in create_table_sql.split('(')[1].split(')')[0].split(',')]
+
+        # 컬럼 추가 확인 및 실행
+        for column_definition in new_columns:
+            column_name = column_definition.split()[0]
+            if column_name not in existing_columns:
+                # 새로운 컬럼 추가
+                alter_query = f"ALTER TABLE {table_name} ADD COLUMN {column_definition}"
+                await self._execute_query(alter_query)
+            else:
+                # 기존 컬럼이 있으므로, 변경 없음
+                pass
+
+        # 컬럼 삭제 확인 (에러 발생)
+        for existing_column in existing_columns:
+            if existing_column not in new_columns:
+                raise Exception(f"자동 DB 마이그레이션에 실패하였습니다. 삭제되는 컬럼: {existing_column} in {table_name}")
+
     #### DBHandler methods
 
     async def init(self) -> 'SQLiteDBHandler':
@@ -185,6 +210,7 @@ class SQLiteDBHandler:
         os.makedirs(os.path.dirname(self.db_file), exist_ok=True)
         await self._create_connection()
 
+        await self.compare_and_update_structure('players', SQLiteDBHandler.SQL_CREATE_PLAYERS_TABLE)
         await self._execute_query(SQLiteDBHandler.SQL_CREATE_PLAYERS_TABLE)
         await self._execute_query(SQLiteDBHandler.SQL_CREATE_PLAYER_MATCH_STATS_TABLE)
 
@@ -313,6 +339,26 @@ class SQLiteDBHandler:
         await self._update_dataclass('player_match_stats', player_match_stats_copy, 'match_id')
         await self.conn.execute("UPDATE player_match_stats SET updated_date = ?", (updated_date,))
         await self.conn.commit()
+
+    async def update_discord_id(self, player_name: str, discord_id: str) -> None:
+        await self.conn.execute("UPDATE players SET discord_id = ? WHERE name = ?", (discord_id, player_name))
+        await self.conn.commit()
+
+    async def get_discord_id(self, player_name: str) -> str:
+        async with self.conn.execute("SELECT discord_id FROM players WHERE name = ?", (player_name,)) as cursor:
+            row = await cursor.fetchone()
+        if row:
+            return row[0]
+        else:
+            raise PlayerNotFoundError_Balancer
+
+    async def get_player_name_by_discord_id(self, discord_id: str) -> str:
+        async with self.conn.execute("SELECT name FROM players WHERE discord_id = ?", (discord_id,)) as cursor:
+            row = await cursor.fetchone()
+        if row:
+            return row[0]
+        else:
+            raise PlayerNotFoundError_Balancer
 
 
 if __name__ == '__main__':
