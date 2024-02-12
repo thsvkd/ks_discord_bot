@@ -7,8 +7,10 @@ from ks_bot.ks_bot import KSBot
 from ks_bot.core.help import CustomHelpCommand
 from ks_bot.utils import *
 
+intents = Intents.all()
+intents.members = True
+bot = KSBot(command_prefix='/', intents=intents)
 
-bot = KSBot(command_prefix='/', intents=Intents.all())
 bot.help_command = CustomHelpCommand()
 
 

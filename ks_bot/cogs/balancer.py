@@ -1,7 +1,8 @@
 import os
 
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
+from discord import Member, Status
 
 from ks_bot.ks_bot import KSBot
 from ks_bot.core.pubg_balancer import PUBG_Balancer
@@ -21,9 +22,22 @@ class Balancer(commands.Cog):
     @commands.Cog.listener()
     async def on_ready(self):
         await self.pubg_balancer.connect_db()
+        self.check_member_status.start()
 
     async def cog_unload(self):
         await self.pubg_balancer.close_db()
+
+    @tasks.loop(minutes=30)
+    async def check_member_status(self):
+        '''
+        주기적으로 멤버가 게임을 플레이 중인지 확인하여 플레이어 정보를 업데이트합니다.
+        '''
+        for guild in self.bot.guilds:
+            for member in guild.members:
+                if member.activity and member.activity.name == Balancer.PUBG_APP_NAME:
+                    player_id = self.parse_player_id(discord_member=member)
+                    player = await self.pubg_balancer._request_single_player(player_id)
+                    self.pubg_balancer.get_player(player.name)
 
     def parse_discord_display_name(self, display_name: str) -> str:
         return display_name.split('|')[1].strip()
@@ -32,7 +46,10 @@ class Balancer(commands.Cog):
         if input.startswith("<@") and input.endswith(">"):
             return input.strip("<@!>")
 
-    async def parse_command_input(self, ctx: commands.Context, input: Union[discord.Member, str]) -> Tuple[str, str | None]:
+    def parse_player_id(self, discord_member: Member) -> str | None:
+        return discord_member.activity.party['id'].split('-')[0]
+
+    async def parse_command_input(self, ctx: commands.Context, input: Union[Member, str]) -> Tuple[str, str | None]:
         if input:
             discord_id = self.parse_discord_id(input)
             if not discord_id:
@@ -54,7 +71,7 @@ class Balancer(commands.Cog):
                     return player_name, discord_id
 
             try:
-                player_id = discord_member.activity.party['id'].split('-')[0]
+                player_id = self.parse_player_id(discord_member=discord_member)
                 player = await self.pubg_balancer._request_single_player(player_id)
                 player_name = player.name
                 return player_name, discord_id
