@@ -1,7 +1,7 @@
 from typing import List, Tuple
 import pytest
 import asyncio
-from conftest import PARAMETRIZE_INDICATOR
+from conftest import PARAMETRIZE_INDICATOR, async_exception_test
 from testdata import *
 
 
@@ -18,6 +18,7 @@ from ks_bot.core.db_handler import *
         (TestData_Player.EXAMPLE_PLAYER1_4, TestData_Player.EXAMPLE_PLAYER1_4),
     ],
 )
+@async_exception_test()
 async def test_insert_fetch_player(db_handler: SQLiteDBHandler, input: Player, expected: Player):
     await db_handler.insert_player(input)
     result = await db_handler.get_player(input.normalized_id)
@@ -66,6 +67,7 @@ async def test_insert_fetch_player(db_handler: SQLiteDBHandler, input: Player, e
         ),
     ],
 )
+@async_exception_test()
 async def test_is_player_exists(db_handler: SQLiteDBHandler, input: Tuple[Player], expected: Tuple[Player, bool]):
     for player in input:
         await db_handler.insert_player(player)
@@ -96,6 +98,7 @@ async def test_is_player_exists(db_handler: SQLiteDBHandler, input: Tuple[Player
         ),
     ],
 )
+@async_exception_test()
 async def test_insert_fetch_player_match_stats(db_handler: SQLiteDBHandler, input: Tuple[Player, PlayerMatchStats], expected: PlayerMatchStats):
     await db_handler.insert_player(input[0])
     await db_handler.insert_player_match_stats(input[1])
@@ -145,6 +148,7 @@ async def test_insert_fetch_player_match_stats(db_handler: SQLiteDBHandler, inpu
         ),
     ],
 )
+@async_exception_test()
 async def test_is_player_match_stats_exists(
     db_handler: SQLiteDBHandler, input: Tuple[Tuple[Player, PlayerMatchStats]], expected: Tuple[Tuple[Player, PlayerMatchStats], bool]
 ):
@@ -181,6 +185,7 @@ async def test_is_player_match_stats_exists(
         ),
     ],
 )
+@async_exception_test()
 async def test_is_player_data_outdated(db_handler: SQLiteDBHandler, input: Tuple[Player, datetime, timedelta], expected: bool):
     await db_handler.insert_player(input[0])
     await asyncio.sleep(input[2].total_seconds())
@@ -202,6 +207,7 @@ async def test_is_player_data_outdated(db_handler: SQLiteDBHandler, input: Tuple
         ),
     ],
 )
+@async_exception_test()
 async def test_update_player(db_handler: SQLiteDBHandler, input: Tuple[Player, Player], expected: Player):
     await db_handler.insert_player(input[0])
     await db_handler.update_player(input[1])
@@ -222,6 +228,7 @@ async def test_update_player(db_handler: SQLiteDBHandler, input: Tuple[Player, P
         ),
     ],
 )
+@async_exception_test()
 async def test_update_player_match_stats(
     db_handler: SQLiteDBHandler, input: Tuple[Tuple[Player, PlayerMatchStats]], expected: Tuple[Player, PlayerMatchStats]
 ):

@@ -1,5 +1,6 @@
 import json
 import os
+import traceback
 from typing import Dict, List, Union
 from datetime import datetime
 from ks_bot.common.common import Timezone
@@ -40,3 +41,8 @@ def get_pubg_token() -> str:
         return ''
 
     return PUBG_TOKEN
+
+
+def print_error(e: Exception) -> None:
+    traceback.print_exc()
+    cprint(f'Exception type: {type(e).__name__}, Message: {e}', 'red')
