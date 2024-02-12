@@ -71,7 +71,7 @@ class Balancer(commands.Cog):
         name="점수",
         help="유저의 스탯 점수를 출력합니다.",
         description="유저의 스탯 점수를 출력합니다.",
-        aliases=['실력', '스탯점수', '실력점수'],
+        aliases=['실력', '스탯점수', '실력점수', 'score'],
     )
     async def player_stats_score(self, ctx: commands.Context, *, input: str = None):
         # async def player_stats_score(self, ctx: commands.Context, player_name: str):
@@ -83,7 +83,7 @@ class Balancer(commands.Cog):
             embed = discord.Embed(
                 title="삐삑! 전투력 측정 중...", description="매치정보를 받아오는 중입니다, 잠시만 기다려주세요...", color=embed_color
             )
-            embed.set_image(url='https://upload2.inven.co.kr/upload/2018/04/10/bbs/i14356989527.png?MW=800')
+            embed.set_image(url='https://drive.google.com/file/d/1limriS7qLdNKEwd6MdfFKODoySDfgEhc/view?usp=sharing')
             message = await ctx.send(embed=embed)
             await asyncio.sleep(1)
 
@@ -96,34 +96,28 @@ class Balancer(commands.Cog):
                     description=stats_description,
                     color=embed_color,
                 )
-                new_embed.set_image(
-                    url='https://mblogthumb-phinf.pstatic.net/MjAxNzAyMTNfMTU4/MDAxNDg2OTM2MTgzMjUz.4AgDTg7WTVbwJb0-dH7ZAEcAiRhTRXec06GbFjO1AhMg.ubL9BMjdrrrqXs94kFh1I3QVVtP7wNy4lyiL9GVsm2wg.JPEG.tkdgns3/%EB%B2%A0%EC%A7%80%ED%84%B0.jpg?type=w800'
-                )
+                new_embed.set_image(url='https://drive.google.com/file/d/18w2ct3QKB9uBzMOG4n-dG0rdviBAc0WR/view?usp=sharing')
             elif 5 <= stats.score < 10:
                 new_embed = discord.Embed(
                     title="전투력 측정 완료! 좀 치는 녀석이군...",
                     description=stats_description,
                     color=embed_color,
                 )
-                new_embed.set_image(
-                    url='https://t2.daumcdn.net/thumb/R720x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/guest/image/unw8lX_eO5ZzNV3SFJOSzgWmVb0.jpg'
-                )
+                new_embed.set_image(url='https://drive.google.com/file/d/10xlxf4frQuA393OKBZ8mdUloIduYEK_6/view?usp=sharing')
             elif 10 <= stats.score < 15:
                 new_embed = discord.Embed(
                     title="전투력 측정 완료! 이, 이녀석 조심해야겠어...!",
                     description=stats_description,
                     color=embed_color,
                 )
-                new_embed.set_image(url='https://cdn2.ppomppu.co.kr/zboard/data3/2014/1024/m_1414130927_RaditzScouter.Ep.4.jpg')
+                new_embed.set_image(url='https://drive.google.com/file/d/1LEIsR0ZbxWqE2oC98bUFJR2nlB7b0adx/view?usp=sharing')
             elif 15 <= stats.score:
                 new_embed = discord.Embed(
                     title="전투력 측정 완료! 스카우터가... 터져버렸어?!?",
                     description=stats_description,
                     color=embed_color,
                 )
-                new_embed.set_image(
-                    url='https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Ft1.daumcdn.net%2Fcfile%2Ftistory%2F164A97034C02CC0F1E'
-                )
+                new_embed.set_image(url='https://drive.google.com/file/d/1HpEUmh9zy0H4KXHjtOY8PJhomhIzt-U2/view?usp=sharing')
             await message.edit(embed=new_embed)
         except PlayerNotFoundError_Balancer as e:
             print_error(e)
