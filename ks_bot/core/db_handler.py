@@ -146,7 +146,7 @@ class SQLiteDBHandler:
             await cursor.execute(sql_query, update_values)
             await self.conn.commit()
 
-    async def _get_player_update_date(self, normalized_id: str = None, player_name: str = None) -> datetime | Error_Balancer:
+    async def _get_player_update_date(self, normalized_id: str = None, player_name: str = None) -> datetime:
         if normalized_id is None and player_name is None:
             raise ValueError("Either 'normalized_id' or 'player_name' must be provided.")
 
@@ -165,7 +165,7 @@ class SQLiteDBHandler:
         if row:
             return parse_utc_to_datetime(row[0], Timezone.KST)
         else:
-            return PlayerNotFoundError_Balancer(f"Player not found: {normalized_id or player_name}")
+            raise PlayerNotFoundError_Balancer
 
     #### DBHandler methods
 
@@ -211,7 +211,7 @@ class SQLiteDBHandler:
 
         return count > 0
 
-    async def get_player(self, normalized_id: str = None, player_name: str = None) -> Player | Error_Balancer:
+    async def get_player(self, normalized_id: str = None, player_name: str = None) -> Player:
         if normalized_id is None and player_name is None:
             raise ValueError("Either 'normalized_id' or 'player_name' must be provided.")
 
@@ -235,7 +235,7 @@ class SQLiteDBHandler:
             player.rank_stats = json.loads(player.rank_stats)
             return player
         else:
-            return PlayerNotFoundError_Balancer(f"Player not found: {normalized_id or player_name}")
+            raise PlayerNotFoundError_Balancer
 
     async def is_player_match_stats_exists(self, player_name: str, match_id: str) -> bool:
         if not match_id or not player_name:
@@ -252,7 +252,7 @@ class SQLiteDBHandler:
 
         return count > 0
 
-    async def get_player_match_stats(self, player_name: str, match_id: str) -> PlayerMatchStats | Error_Balancer:
+    async def get_player_match_stats(self, player_name: str, match_id: str) -> PlayerMatchStats:
         async with self.conn.execute(
             "SELECT * FROM player_match_stats WHERE player_name = ? AND match_id = ?",
             (
@@ -270,7 +270,7 @@ class SQLiteDBHandler:
             player_match_stats.match_type = MatchType(player_match_stats.match_type)
             return player_match_stats
         else:
-            return PlayerMatchStatsNotFoundError_Balancer(f"Player match stats not found: {match_id}")
+            raise PlayerMatchStatsNotFoundError_Balancer
 
     async def is_player_data_outdated(
         self, normalized_id: str = None, player_name: str = None, expiration_period: timedelta = timedelta(days=7)

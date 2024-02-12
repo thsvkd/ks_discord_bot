@@ -1,10 +1,12 @@
 import os
 
+import discord
 from discord.ext import commands
 
 from ks_bot.ks_bot import KSBot
 from ks_bot.core.pubg_balancer import PUBG_Balancer
 from ks_bot.common.error import *
+from ks_bot.utils import *
 from termcolor import cprint
 import asyncio
 
@@ -12,18 +14,7 @@ import asyncio
 class Balancer(commands.Cog):
     def __init__(self, bot: KSBot):
         self.bot = bot
-
-        pubg_token = os.environ.get('PUBG_TOKEN')
-        if not pubg_token:
-            cprint("PUBG_TOKEN 환경 변수가 설정되지 않았습니다.", 'yellow')
-            cprint("토큰을 설정하려면, 쉘의 설정 파일(.bashrc, .zshrc 등)에 다음을 추가하세요:", 'yellow')
-            cprint('')
-            cprint('    export PUBG_TOKEN="your_token_here"', 'yellow')
-            cprint('')
-            cprint("이후 새 쉘 세션을 시작하거나 설정 파일을 재로드하세요. (`source ~/.bashrc` or `source ~/.zshrc`)", 'yellow')
-            raise ValueError("PUBG_TOKEN 환경 변수가 설정되지 않았습니다.")
-
-        self.pubg_balancer = PUBG_Balancer(api_key=pubg_token, platform='steam')
+        self.pubg_balancer = PUBG_Balancer(api_key=get_pubg_token(), platform='steam')
 
     @commands.Cog.listener()
     async def on_ready(self):
@@ -50,15 +41,59 @@ class Balancer(commands.Cog):
         aliases=['실력', '스탯점수', '실력점수'],
     )
     async def player_stats_score(self, ctx: commands.Context, player_name: str):
+        embed_color = 0xD04848
+
         try:
-            stats = await self.pubg_balancer.get_stats(player_name)
-            if isinstance(stats, Error_Balancer):
-                await ctx.send(f"{player_name}의 스탯 점수를 가져오는데 실패했습니다. \nerror: {stats.message}")
-            else:
-                await ctx.send(f"{player_name}의 스탯 점수는 {stats.score:.04f} 입니다.")
+            stats_future = self.pubg_balancer.get_stats(player_name)
+            embed = discord.Embed(
+                title="삐삑! 전투력 측정 중...", description="매치정보를 받아오는 중입니다, 잠시만 기다려주세요...", color=embed_color
+            )
+            embed.set_image(url='https://upload2.inven.co.kr/upload/2018/04/10/bbs/i14356989527.png?MW=800')
+            message = await ctx.send(embed=embed)
+            await asyncio.sleep(1)
+
+            # await ctx.send(f"{player_name}의 스탯 점수는 {stats.score:.04f} 입니다.")
+            stats = await stats_future
+            stats_description = f"**`{player_name}`**의 스탯 점수는 **`{stats.score:.04f}`** 입니다."
+            if 0 < stats.score < 5:
+                new_embed = discord.Embed(
+                    title="전투력 측정 완료! 애송이로군요!",
+                    description=stats_description,
+                    color=embed_color,
+                )
+                new_embed.set_image(
+                    url='https://mblogthumb-phinf.pstatic.net/MjAxNzAyMTNfMTU4/MDAxNDg2OTM2MTgzMjUz.4AgDTg7WTVbwJb0-dH7ZAEcAiRhTRXec06GbFjO1AhMg.ubL9BMjdrrrqXs94kFh1I3QVVtP7wNy4lyiL9GVsm2wg.JPEG.tkdgns3/%EB%B2%A0%EC%A7%80%ED%84%B0.jpg?type=w800'
+                )
+            elif 5 <= stats.score < 10:
+                new_embed = discord.Embed(
+                    title="전투력 측정 완료! 좀 치는 녀석이군...",
+                    description=stats_description,
+                    color=embed_color,
+                )
+                new_embed.set_image(
+                    url='https://t2.daumcdn.net/thumb/R720x0.fjpg/?fname=http://t1.daumcdn.net/brunch/service/guest/image/unw8lX_eO5ZzNV3SFJOSzgWmVb0.jpg'
+                )
+            elif 10 <= stats.score < 15:
+                new_embed = discord.Embed(
+                    title="전투력 측정 완료! 이, 이녀석 조심해야겠어...!",
+                    description=stats_description,
+                    color=embed_color,
+                )
+                new_embed.set_image(url='https://cdn2.ppomppu.co.kr/zboard/data3/2014/1024/m_1414130927_RaditzScouter.Ep.4.jpg')
+            elif 15 <= stats.score:
+                new_embed = discord.Embed(
+                    title="전투력 측정 완료! 스카우터가... 터져버렸어?!?",
+                    description=stats_description,
+                    color=embed_color,
+                )
+                new_embed.set_image(
+                    url='https://img1.daumcdn.net/thumb/R1280x0/?scode=mtistory2&fname=https%3A%2F%2Ft1.daumcdn.net%2Fcfile%2Ftistory%2F164A97034C02CC0F1E'
+                )
+            await message.edit(embed=new_embed)
+        except Error_Balancer as e:
+            print_error(e)
         except Exception as e:
-            # TODO: 에러 핸들링 추가
-            pass
+            print_error(e)
 
 
 async def setup(bot: KSBot):

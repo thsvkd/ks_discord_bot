@@ -1,6 +1,6 @@
 import pytest
 from ks_bot.core.get_youtube import *
-from conftest import PARAMETRIZE_INDICATOR
+from conftest import PARAMETRIZE_INDICATOR, async_exception_test
 
 
 @pytest.mark.asyncio
@@ -13,6 +13,7 @@ from conftest import PARAMETRIZE_INDICATOR
         ('not_a_url', False),
     ],
 )
+@async_exception_test()
 async def test_is_valid_url(input, expected):
     assert await is_valid_url(input) == expected
 
@@ -25,6 +26,7 @@ async def test_is_valid_url(input, expected):
         ('Python asyncio tutorial', 'youtube.com'),
     ],
 )
+@async_exception_test()
 async def test_search_youtube(input, expected):
     result_url = await search_youtube(input)
     assert expected in result_url
@@ -38,6 +40,7 @@ async def test_search_youtube(input, expected):
         ('https://www.youtube.com/watch?v=dQw4w9WgXcQ', 'Rick Astley'),
     ],
 )
+@async_exception_test()
 async def test_get_youtube_with_url(input, expected):
     info = await get_youtube(input)
     assert expected in info['title']
@@ -51,6 +54,7 @@ async def test_get_youtube_with_url(input, expected):
         ('Rick Astley Never Gonna Give You Up', 'Rick Astley'),
     ],
 )
+@async_exception_test()
 async def test_get_youtube_with_query(input, expected):
     info = await get_youtube(input)
     assert expected in info['title']

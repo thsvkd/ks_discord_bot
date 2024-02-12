@@ -1,4 +1,4 @@
-from conftest import PARAMETRIZE_INDICATOR, validate_dict_structure
+from conftest import PARAMETRIZE_INDICATOR, validate_dict_structure, async_exception_test
 import pytest
 from ks_bot.core.pubg_balancer import *
 from ks_bot.common.error import *
@@ -10,15 +10,13 @@ from testdata import *
     PARAMETRIZE_INDICATOR,
     [
         ('SonPANG', TestData_Player.REAL_PLAYER1),
-        ('SonPANg', PlayerNotFoundError_Balancer),
+        ('SonPANg', PlayerNotFoundError_Balancer(player_name='SonPANg')),
     ],
 )
+@async_exception_test()
 async def test_request_player(pubg_balancer: PUBG_Balancer, input: str, expected: Player):
     player = await pubg_balancer._request_player(player_name=input)
-    if isinstance(player, Player):
-        assert player.id == expected.id and player.name == expected.name and player.platform == expected.platform
-    else:
-        assert isinstance(player, expected)
+    assert player.id == expected.id and player.name == expected.name and player.platform == expected.platform
 
 
 @pytest.mark.asyncio
@@ -28,6 +26,7 @@ async def test_request_player(pubg_balancer: PUBG_Balancer, input: str, expected
         (None, {'type': str, 'id': str, 'attributes': {'isCurrentSeason': bool, 'isOffseason': bool}}),
     ],
 )
+@async_exception_test()
 async def test_request_seasons_data(pubg_balancer: PUBG_Balancer, input: str, expected: Player):
     seasons_data = await pubg_balancer._request_seasons_data()
     assert validate_dict_structure(schema=expected, target_dict=seasons_data)
@@ -56,6 +55,7 @@ async def test_request_seasons_data(pubg_balancer: PUBG_Balancer, input: str, ex
         ),
     ],
 )
+@async_exception_test()
 async def test_request_clan_data(pubg_balancer: PUBG_Balancer, input: str, expected: Player):
     clan_data = await pubg_balancer._request_clan_data(clan_id=input)
     assert validate_dict_structure(schema=expected, target_dict=clan_data)

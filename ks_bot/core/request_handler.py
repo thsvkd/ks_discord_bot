@@ -1,5 +1,6 @@
 from enum import Enum, auto
-from termcolor import colored
+import time
+from termcolor import cprint
 import aiohttp
 import asyncio
 from aiohttp_retry import RetryClient, ExponentialRetry
@@ -25,22 +26,22 @@ class APIRequestHandler:
         self.timeout = aiohttp.ClientTimeout(total=timeout)
         self.rate_limit_per_minute = rate_limit_per_minute
         self.remaining_requests = rate_limit_per_minute
-        self.rate_limit_reset_timestamp = asyncio.get_event_loop().time()
+        self.rate_limit_reset_timestamp = time.time()
         self.retry_options = ExponentialRetry(attempts=max_retries)
 
     async def wait_for_rate_limit_reset(self) -> None:
-        current_time = asyncio.get_event_loop().time()
+        current_time = time.time()
         while self.remaining_requests <= 0 and current_time < self.rate_limit_reset_timestamp:
             sleep_time = self.rate_limit_reset_timestamp - current_time
             print(f"\rRate limit exceeded. Waiting for {sleep_time:.0f} seconds.", end='', flush=True)
             await asyncio.sleep(1)
-            current_time = asyncio.get_event_loop().time()
+            current_time = time.time()
         else:
             print("\nRate limit has been reset. Continuing with the requests.")
 
     async def request(
         self, endpoint: str, method: HttpMethod = HttpMethod.GET, header: dict = None, params: dict = None, data: dict = None, json: dict = None
-    ) -> dict | ErrorCode_Balancer:
+    ) -> dict:
         url = f'{self.base_url}/{endpoint}'
 
         async with aiohttp.ClientSession() as session:
@@ -49,18 +50,23 @@ class APIRequestHandler:
                 async with client.request(method.value, url, headers=header, params=params, json=json, data=data) as response:
                     if response.status == 429:
                         self.remaining_requests = 0
-                        self.rate_limit_reset_timestamp = float(response.headers.get('X-RateLimit-Reset', asyncio.get_event_loop().time())) + 1
+                        self.rate_limit_reset_timestamp = float(response.headers.get('X-RateLimit-Reset', time.time())) + 1
                         await self.wait_for_rate_limit_reset()
                         return await self.request(endpoint, method, header, params, data, json)
                     elif response.status == 404:
-                        return ErrorCode_Balancer.PLAYER_NOT_FOUND
+                        raise PlayerNotFoundError_Balancer
                     else:
                         self.remaining_requests = int(response.headers.get('X-RateLimit-Remaining', self.remaining_requests))
                         self.rate_limit_reset_timestamp = float(response.headers.get('X-RateLimit-Reset', self.rate_limit_reset_timestamp))
+
+                        cprint(f'API request success! endpoint: {endpoint}, Remaining requests: {self.remaining_requests}', 'green')
                         return await response.json()
             except aiohttp.ClientError as e:
-                print(f"HTTP error occurred: {e}")
-                return ErrorCode_Balancer.API_REQUEST_ERROR
+                raise APIRequestError_Balancer(f"HTTP error occurred while API request: {e}")
+            except PlayerNotFoundError_Balancer as e:
+                raise e
+            except Exception as e:
+                raise APIRequestError_Balancer(f"Unknown error occurred: {e}")
 
 
 if __name__ == "__main__":
