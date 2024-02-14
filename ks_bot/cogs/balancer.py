@@ -37,7 +37,12 @@ class Balancer(commands.Cog):
                 if member.activity and member.activity.name == Balancer.PUBG_APP_NAME:
                     player_id = self.parse_player_id(discord_member=member)
                     player = await self.pubg_balancer._request_single_player(player_id)
-                    await self.pubg_balancer.update_player(player)
+                    if not await self.pubg_balancer.is_player_exist(player.name):
+                        await self.pubg_balancer.insert_player(player)
+                    else:
+                        await self.pubg_balancer.update_player(player)
+
+                    await self.pubg_balancer.update_discord_id(player.name, member.id)
 
     def parse_discord_display_name(self, display_name: str) -> str:
         return display_name.split('|')[1].strip()
