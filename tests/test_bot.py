@@ -37,7 +37,13 @@ class TestExtensionLoading:
     async def test_all_cogs_load(self, bot: KSBot):
         loaded = await bot.load_all_extensions()
 
-        assert {name.rsplit('.', 1)[1] for name in loaded} == {'balancer', 'game', 'msg', 'music', 'user'}
+        assert {name.rsplit('.', 1)[1] for name in loaded} == {'balancer', 'game', 'giveaway', 'msg', 'music', 'user'}
+
+    async def test_giveaway_cog_is_skipped_without_channel(self, bot: KSBot):
+        """확장은 로드되지만, 채널 설정이 없으면 코그는 등록되지 않는다."""
+        await bot.load_all_extensions()
+
+        assert bot.get_cog('무료배포') is None
 
     async def test_commands_are_registered(self, bot: KSBot):
         await bot.load_all_extensions()
