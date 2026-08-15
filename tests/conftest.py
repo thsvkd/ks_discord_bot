@@ -15,6 +15,7 @@ from typing import Any
 
 import pytest
 
+from ks_bot.bot import KSBot
 from ks_bot.common.timeutil import Timezone
 from ks_bot.config import Settings, load_dotenv
 from ks_bot.core.giveaway import GiveawayService
@@ -70,6 +71,16 @@ def settings(tmp_path: Path) -> Settings:
         db_path=tmp_path / 'history.db',
         game_result_dir=tmp_path / 'game_result',
     )
+
+
+@pytest.fixture
+async def bot(settings: Settings) -> AsyncIterator[KSBot]:
+    """디스코드 게이트웨이에 접속하지 않는 봇 인스턴스."""
+    instance = KSBot(settings)
+    try:
+        yield instance
+    finally:
+        await instance.close()
 
 
 @pytest.fixture

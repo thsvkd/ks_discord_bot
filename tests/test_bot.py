@@ -6,23 +6,10 @@
 
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
-
-import pytest
-
 from ks_bot.bot import KSBot, build_intents
 from ks_bot.config import Settings
 
 EXPECTED_COMMANDS = {'점수', '재생', '주사위', '가위바위보', '숫자', '추방', '볼륨', '대기리스트'}
-
-
-@pytest.fixture
-async def bot(settings: Settings) -> AsyncIterator[KSBot]:
-    instance = KSBot(settings)
-    try:
-        yield instance
-    finally:
-        await instance.close()
 
 
 class TestIntents:
