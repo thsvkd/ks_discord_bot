@@ -2,15 +2,19 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 import discord
 from discord.ext import commands
 
 __all__ = [
     'HELP_COMMAND_ATTRS',
     'CustomHelpCommand',
+    'build_group_help_embed',
     'build_help_embed',
     'collect_command_mapping',
     'format_command_line',
+    'iter_leaf_commands',
     'register_help_app_command',
 ]
 
@@ -44,12 +48,29 @@ HELP_COMMAND_ATTRS = {
 SLASH_HELP_NAME = '도움말'
 
 
+def iter_leaf_commands(command_list: Iterable[commands.Command]) -> list[commands.Command]:
+    """실제로 실행할 수 있는 커맨드만 골라 이름순으로 반환한다.
+
+    그룹은 그 자체로 호출할 수 없으므로(디스코드 제약) 목록에서 빼고 하위 커맨드를 펼친다.
+    """
+    leaves: list[commands.Command] = []
+    for command in command_list:
+        if command.hidden:
+            continue
+        if isinstance(command, commands.Group):
+            leaves.extend(iter_leaf_commands(command.commands))
+            continue
+        leaves.append(command)
+    return sorted(leaves, key=lambda command: command.qualified_name)
+
+
 def format_command_line(command: commands.Command, prefix: str) -> str:
     """도움말 한 줄. 별칭이 있으면 함께 보여준다.
 
     별칭을 감추면 `/무료게임`은 알아도 `/무료`는 모르는 상황이 생긴다.
+    그룹 하위 커맨드는 `/음악 재생`처럼 전체 경로로 보여야 그대로 따라 칠 수 있다.
     """
-    line = f'`{prefix}{command.name}`'
+    line = f'`{prefix}{command.qualified_name}`'
     if command.aliases:
         line += f' ({", ".join(f"`{alias}`" for alias in command.aliases)})'
     return f'{line}\n　{command.help or command.description or "설명 없음"}'
@@ -68,8 +89,7 @@ def build_help_embed(mapping: dict[commands.Cog | None, list[commands.Command]],
 
     # 코그 없는 커맨드(도움말 자신)는 마지막에 오도록 정렬한다.
     for cog, command_list in sorted(mapping.items(), key=lambda item: (item[0] is None, getattr(item[0], 'qualified_name', ''))):
-        visible = sorted((command for command in command_list if not command.hidden), key=lambda command: command.name)
-        lines = [format_command_line(command, prefix) for command in visible]
+        lines = [format_command_line(command, prefix) for command in iter_leaf_commands(command_list)]
         if not lines:
             continue
 
@@ -77,6 +97,19 @@ def build_help_embed(mapping: dict[commands.Cog | None, list[commands.Command]],
         name = cog.qualified_name if cog else '기타'
         for index, chunk in enumerate(_chunk_lines(lines)):
             embed.add_field(name=name if index == 0 else f'{name} (계속)', value=chunk, inline=False)
+    return embed
+
+
+def build_group_help_embed(group: commands.Group, prefix: str) -> discord.Embed:
+    """그룹 하나의 하위 커맨드 목록 임베드."""
+    embed = discord.Embed(
+        title=f'📖 {prefix}{group.qualified_name}',
+        description=group.help or group.description or '',
+        color=discord.Color.blue(),
+    )
+    lines = [format_command_line(command, prefix) for command in iter_leaf_commands(group.commands)]
+    for index, chunk in enumerate(_chunk_lines(lines)):
+        embed.add_field(name='커맨드' if index == 0 else '커맨드 (계속)', value=chunk, inline=False)
     return embed
 
 
@@ -111,10 +144,17 @@ class CustomHelpCommand(commands.HelpCommand):
             embed.add_field(name='사용법', value=f'`{self.context.clean_prefix}{command.qualified_name} {command.signature}`', inline=False)
         await self.get_destination().send(embed=embed)
 
+    async def send_group_help(self, group: commands.Group) -> None:
+        """그룹 하위 커맨드 목록.
+
+        기본 구현은 아무것도 보내지 않는다. 그러면 `/음악`만 쳤을 때 봇이 침묵하므로 직접 채운다.
+        """
+        await self.get_destination().send(embed=build_group_help_embed(group, self.context.clean_prefix))
+
     async def send_cog_help(self, cog: commands.Cog) -> None:
         prefix = self.context.clean_prefix
         embed = discord.Embed(title=f'📖 {cog.qualified_name}', description=cog.description or '', color=discord.Color.blue())
-        lines = [format_command_line(command, prefix) for command in sorted(cog.get_commands(), key=lambda c: c.name) if not command.hidden]
+        lines = [format_command_line(command, prefix) for command in iter_leaf_commands(cog.get_commands())]
         if lines:
             for index, chunk in enumerate(_chunk_lines(lines)):
                 embed.add_field(name='커맨드' if index == 0 else '커맨드 (계속)', value=chunk, inline=False)

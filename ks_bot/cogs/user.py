@@ -17,7 +17,16 @@ class User(commands.Cog, name='유저관리'):
     def __init__(self, bot: KSBot):
         self.bot = bot
 
-    @commands.hybrid_command(name='추방', help='유저를 추방합니다.', description='유저를 추방합니다.')
+    @commands.hybrid_group(name='유저', help='서버 멤버 관리 커맨드입니다.', description='서버 멤버 관리 커맨드입니다.', invoke_without_command=True)
+    @commands.guild_only()
+    async def user_group(self, ctx: commands.Context) -> None:
+        """`/유저`만 입력했을 때 하위 커맨드를 안내한다.
+
+        슬래시로는 그룹 자체를 호출할 수 없으므로(디스코드 제약) 이 콜백은 접두사 전용이다.
+        """
+        await ctx.send_help(ctx.command)
+
+    @user_group.command(name='추방', help='유저를 추방합니다.', description='유저를 추방합니다.')
     @commands.guild_only()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
@@ -25,7 +34,7 @@ class User(commands.Cog, name='유저관리'):
         await member.kick(reason=f'요청자: {ctx.author}')
         await ctx.send(f'{member} 님이 추방되었습니다.')
 
-    @commands.hybrid_command(name='차단', help='유저를 차단합니다.', description='유저를 차단합니다.')
+    @user_group.command(name='차단', help='유저를 차단합니다.', description='유저를 차단합니다.')
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
@@ -33,7 +42,7 @@ class User(commands.Cog, name='유저관리'):
         await member.ban(reason=f'요청자: {ctx.author}')
         await ctx.send(f'{member} 님이 차단되었습니다.')
 
-    @commands.hybrid_command(name='차단해제', help='유저를 차단해제합니다.', description='유저를 차단해제합니다.')
+    @user_group.command(name='차단해제', help='유저를 차단해제합니다.', description='유저를 차단해제합니다.')
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
@@ -47,7 +56,7 @@ class User(commands.Cog, name='유저관리'):
 
         await ctx.send(f'{nickname} 님은 차단 목록에 없습니다.')
 
-    @commands.hybrid_command(name='역할부여', help='유저에게 역할을 부여합니다.', description='유저에게 역할을 부여합니다.')
+    @user_group.command(name='역할부여', help='유저에게 역할을 부여합니다.', description='유저에게 역할을 부여합니다.')
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)

@@ -5,6 +5,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 import pytest
+from discord import app_commands
 from discord.ext import commands
 
 from ks_bot.bot import KSBot
@@ -12,11 +13,20 @@ from ks_bot.help_command import (
     HELP_COMMAND_ATTRS,
     SLASH_HELP_NAME,
     _chunk_lines,
+    build_group_help_embed,
     build_help_embed,
     collect_command_mapping,
     format_command_line,
     register_help_app_command,
 )
+
+#: 그룹 이름 → 그 아래에 반드시 있어야 하는 하위 커맨드.
+EXPECTED_GROUPS = {
+    '음악': {'재생', '정지', '스킵', '일시정지', '계속재생', '볼륨', '반복', '랜덤재생', '대기리스트', '강제연결해제'},
+    '메시지': {'숫자', '임베드', '삭제', '수정', '따봉', '기다리기'},
+    '유저': {'추방', '차단', '차단해제', '역할부여'},
+    '게임': {'주사위', '뽑기', '가위바위보', '전적'},
+}
 
 
 def make_command(name: str, *, aliases: list[str] | None = None, help_text: str = '') -> commands.Command:
@@ -79,7 +89,7 @@ class TestSlashCommands:
         await bot.load_all_extensions()
         register_help_app_command(bot)
 
-        for command in bot.tree.get_commands():
+        for command in bot.tree.walk_commands():
             assert command.name == command.name.lower(), command.name
             assert ' ' not in command.name, command.name
             assert 1 <= len(command.name) <= 32, command.name
@@ -89,8 +99,86 @@ class TestSlashCommands:
         await bot.load_all_extensions()
         register_help_app_command(bot)
 
-        for command in bot.tree.get_commands():
+        for command in bot.tree.walk_commands():
             assert 1 <= len(command.description) <= 100, (command.name, len(command.description))
+
+
+class TestSlashCommandGroups:
+    """`/` 목록을 카테고리로 묶은 구조를 고정한다.
+
+    디스코드에는 최상위 커맨드에 붙일 카테고리 개념이 없다. 목록을 묶는 유일한 수단이
+    서브커맨드 그룹이므로, 그룹 구조가 무너지면 목록이 다시 27줄로 평평해진다.
+    """
+
+    async def test_categories_are_grouped(self, bot: KSBot):
+        await bot.load_all_extensions()
+
+        for name, expected in EXPECTED_GROUPS.items():
+            group = bot.tree.get_command(name)
+            assert isinstance(group, app_commands.Group), f'{name}이(가) 그룹이 아닙니다.'
+            assert {command.name for command in group.commands} == expected
+
+    async def test_frequently_used_commands_stay_top_level(self, bot: KSBot):
+        """자주 쓰는 커맨드까지 두 단어로 만들면 오히려 불편해진다."""
+        await bot.load_all_extensions()
+        register_help_app_command(bot)
+
+        for name in ('점수', SLASH_HELP_NAME):
+            command = bot.tree.get_command(name)
+            assert command is not None, name
+            assert not isinstance(command, app_commands.Group), name
+
+    async def test_top_level_list_stays_short(self, bot: KSBot):
+        """그룹화의 목적 자체가 목록 길이를 줄이는 것이다."""
+        await bot.load_all_extensions()
+        register_help_app_command(bot)
+
+        top_level = bot.tree.get_commands()
+        executable = sum(len(c.commands) if isinstance(c, app_commands.Group) else 1 for c in top_level)
+
+        assert len(top_level) <= 10
+        assert executable > len(top_level)  # 실제 커맨드 수는 그대로여야 한다
+
+    async def test_groups_fit_discord_limits(self, bot: KSBot):
+        """그룹당 하위 커맨드는 25개까지고, 중첩은 1단계까지만 허용된다."""
+        await bot.load_all_extensions()
+
+        for group in (c for c in bot.tree.get_commands() if isinstance(c, app_commands.Group)):
+            assert len(group.commands) <= 25, group.name
+            nested = [c for c in group.commands if isinstance(c, app_commands.Group)]
+            assert nested == [], f'{group.name} 아래에 그룹이 또 있습니다: {[c.name for c in nested]}'
+
+    async def test_prefix_form_matches_the_slash_form(self, bot: KSBot):
+        """`/음악 재생`을 그대로 타이핑해도 동작해야 한다."""
+        await bot.load_all_extensions()
+
+        assert bot.get_command('음악 재생') is not None
+        assert bot.get_command('유저 추방') is not None
+        # 그룹으로 옮겼으므로 옛 최상위 이름은 더 이상 존재하지 않는다.
+        assert bot.get_command('재생') is None
+
+
+class TestBuildGroupHelpEmbed:
+    """`/음악`처럼 그룹만 입력했을 때의 안내."""
+
+    async def test_lists_every_subcommand(self, bot: KSBot):
+        await bot.load_all_extensions()
+
+        embed = build_group_help_embed(bot.get_command('음악'), '/')
+        values = ' '.join(field.value for field in embed.fields)
+
+        for name in EXPECTED_GROUPS['음악']:
+            assert f'`/음악 {name}`' in values
+
+    async def test_fits_discord_limits(self, bot: KSBot):
+        """음악은 하위 커맨드가 10개라 필드 하나(1024자)를 넘길 수 있다."""
+        await bot.load_all_extensions()
+
+        embed = build_group_help_embed(bot.get_command('음악'), '/')
+
+        assert embed.fields  # 기본 구현은 아무것도 보내지 않아 봇이 침묵했다
+        assert all(len(field.value) <= 1024 for field in embed.fields)
+        assert len(embed) <= 6000
 
 
 class TestBuildHelpEmbed:
@@ -102,6 +190,18 @@ class TestBuildHelpEmbed:
         names = ' '.join(field.name for field in embed.fields)
         assert '음악' in names
         assert '밸런서' in names
+
+    async def test_group_commands_show_the_full_path(self, bot: KSBot):
+        """`재생`만 보여주면 어떻게 부르는지 알 수 없다."""
+        await bot.load_all_extensions()
+
+        embed = build_help_embed(collect_command_mapping(bot), '/')
+        values = ' '.join(field.value for field in embed.fields)
+
+        assert '`/음악 재생`' in values
+        assert '`/유저 추방`' in values
+        # 그룹 자체는 호출할 수 없으므로 목록에 넣지 않는다.
+        assert '`/음악`\n' not in values
 
     async def test_field_values_fit_discord_limit(self, bot: KSBot):
         await bot.load_all_extensions()
@@ -161,15 +261,24 @@ class TestCommandCoverage:
         """도움말에 '설명 없음'으로 뜨는 커맨드가 없어야 한다."""
         await bot.load_all_extensions()
 
-        missing = [command.qualified_name for command in bot.commands if not command.hidden and not (command.help or command.description)]
+        missing = [command.qualified_name for command in bot.walk_commands() if not command.hidden and not (command.help or command.description)]
 
         assert missing == []
 
     async def test_no_alias_collides_with_a_command_name(self, bot: KSBot):
+        """별칭 충돌은 같은 부모 아래에서만 문제가 된다."""
         await bot.load_all_extensions()
 
-        names = {command.name for command in bot.commands}
-        collisions = [(command.name, alias) for command in bot.commands for alias in command.aliases if alias in names]
+        names: dict[str, set[str]] = {}
+        for command in bot.walk_commands():
+            names.setdefault(command.full_parent_name, set()).add(command.name)
+
+        collisions = [
+            (command.qualified_name, alias)
+            for command in bot.walk_commands()
+            for alias in command.aliases
+            if alias in names.get(command.full_parent_name, set())
+        ]
 
         assert collisions == []
 
