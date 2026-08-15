@@ -1,24 +1,74 @@
 [tool.poetry]
 name = "ks_bot"
-version = "0.1.4"
-description = "ks_bot"
-authors = ["Your Name <thsxogud1123@gmail.com>"]
+version = "0.2.0"
+description = "PUBG 전적 조회와 음악 재생을 지원하는 디스코드 봇"
+authors = ["thsvkd <thsxogud1123@gmail.com>"]
+readme = "README.md"
+packages = [{ include = "ks_bot" }]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-"discord.py" = { version = "*", extras = ["voice"] }
-yt-dlp = "*" 
+"discord.py" = { version = "^2.3", extras = ["voice"] }
+yt-dlp = "*"
 youtube-search-python = "*"
 termcolor = "*"
-pytz = "*"
+# 윈도우에는 시스템 tz 데이터베이스가 없어 zoneinfo가 tzdata 패키지를 필요로 한다.
+tzdata = { version = "*", markers = "sys_platform == 'win32'" }
 aiosqlite = "*"
 aiohttp = "*"
 aiohttp_retry = "*"
 
-[tool.poetry.dev-dependencies]
-pytest = "*" 
-pytest-asyncio = "*"
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+pytest-asyncio = "^0.23"
+ruff = "^0.5"
+
+[tool.poetry.scripts]
+ks-bot = "ks_bot.__main__:main"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = [".", "tests"]
+addopts = "-ra -v --strict-markers"
+asyncio_mode = "auto"
+markers = [
+    "network: 외부 네트워크(PUBG/YouTube API)가 필요한 테스트 (`-m 'not network'`로 제외)",
+]
+
+[tool.ruff]
+line-length = 150
+target-version = "py310"
+extend-exclude = [".venv", "poetry.lock"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+    "RUF", # ruff 고유 규칙
+]
+ignore = [
+    "B008",   # 기본 인자에서의 함수 호출(디스코드 데코레이터 패턴과 충돌)
+    "RUF001", # 한글 주석의 전각 문자 경고
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+
+[tool.ruff.format]
+quote-style = "single"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint.isort]
+known-first-party = ["ks_bot", "factories"]

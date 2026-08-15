@@ -1,492 +1,449 @@
+"""유튜브 음악 재생 코그.
+
+이전 구현은 길드별 상태를 중첩 dict(`queue["playing"]["vol"]`)로 관리하고,
+1초 간격 폴링으로 다음 곡을 재생했다. 여기서는 상태를 데이터클래스로 모델링하고,
+FFmpeg 재생 완료 콜백(`after`)이 이벤트를 깨우는 방식으로 바꿔 폴링을 없앴다.
+"""
+
+from __future__ import annotations
+
 import asyncio
-import time
 import random
+from dataclasses import dataclass, field
 
 import discord
 from discord.ext import commands
 from discord.voice_client import VoiceClient
 
-from ks_bot.ks_bot import KSBot
-from ks_bot.core import get_youtube
+from ks_bot.bot import KSBot
+from ks_bot.core.youtube import FFMPEG_BEFORE_ARGS, TrackInfo, get_youtube
+from ks_bot.logging_config import get_logger
+
+logger = get_logger(__name__)
+
+DEFAULT_VOLUME = 0.3
+QUEUE_PAGE_SIZE = 5
+CONFIRM_TIMEOUT = 30.0
+MUSIC_EMBED_COLOR = discord.Colour.from_rgb(255, 0, 0)
 
 
-async def confirm(bot: commands.Bot, ctx: commands.Context, msg: discord.Message, time: int = 30) -> bool:
-    """
-    해당 액션을 할지 확인하는 코루틴 함수입니다.
-    :param ctx: 명령어 컨택스트
-    :param bot: 디스코드 봇
-    :param msg: 메시지
-    :param time: 타임아웃 시간 (기본: 30초)
-    :return: 승인했을 때는 `True`를, 거절했을 때는 `False`를, 타임아웃때는 `None`을 반환합니다.
-    """
-    emoji_list = ["⭕", "❌"]
+@dataclass(frozen=True)
+class Track:
+    """재생 대기열의 한 곡."""
 
-    await msg.add_reaction("⭕")
-    await msg.add_reaction("❌")
+    info: TrackInfo
+    requester_id: int
 
-    def check(reaction, user):
-        return str(reaction.emoji) in emoji_list and user == ctx.author
-
-    try:
-        reaction, user = await bot.wait_for("reaction_add", timeout=time, check=check)
-        if str(reaction.emoji) == emoji_list[0]:
-            return True
-        elif str(reaction.emoji) == emoji_list[1]:
-            return False
-    except asyncio.TimeoutError:
-        return None
+    @property
+    def title(self) -> str:
+        return self.info.title or '제목 없음'
 
 
-async def start_page(bot: commands.Bot, ctx: commands.Context, lists: list, time: int = 30, embed: bool = False) -> None:
-    """
-    페이지 기능 코루틴 함수입니다.
-    :param bot: 디스코드 봇
-    :param ctx: 명령어 컨택스트
-    :param lists: 보낼 페이지 리스트
-    :param time: 타임아웃 시간 (기본: 30초)
-    :param embed: 임베드 여부 (기본: False)
-    :return:
-    """
-    counts = len(lists) - 1
+@dataclass
+class GuildPlayer:
+    """길드 하나의 재생 상태."""
 
-    emoji_list = ["⬅", "⏹", "➡"]
+    guild_id: int
+    voice: VoiceClient
+    text_channel: discord.abc.Messageable
+    queue: list[Track] = field(default_factory=list)
+    current: Track | None = None
+    volume: float = DEFAULT_VOLUME
+    loop: bool = False
+    shuffle: bool = False
+    next_event: asyncio.Event = field(default_factory=asyncio.Event)
+    task: asyncio.Task | None = None
 
-    def check(reaction, user):
-        return str(reaction.emoji) in emoji_list and user == ctx.author
-
-    if embed is True:
-        msg = await ctx.send(embed=lists[0])
-    else:
-        msg = await ctx.send(lists[0])
-    counted = 0
-
-    for x in emoji_list:
-        await msg.add_reaction(x)
-
-    try:
-        while True:
-            reaction, user = await bot.wait_for("reaction_add", timeout=time, check=check)
-            if str(reaction.emoji) == emoji_list[1]:
-                try:
-                    await msg.clear_reactions()
-                except discord.Forbidden:
-                    await msg.remove_reaction(emoji_list[0], msg.author)
-                    await msg.remove_reaction(emoji_list[1], msg.author)
-                    await msg.remove_reaction(emoji_list[2], msg.author)
-                break
-            elif str(reaction.emoji) == emoji_list[2]:
-                try:
-                    await msg.remove_reaction(emoji_list[2], ctx.author)
-                except discord.Forbidden:
-                    pass
-                counted += 1
-                if counted > counts:
-                    await ctx.send("이미 마지막 페이지입니다.", delete_after=3)
-                    counted = counts
-                    continue
-                if embed is True:
-                    await msg.edit(embed=lists[counted])
-                else:
-                    await msg.edit(content=lists[counted])
-            elif str(reaction.emoji) == emoji_list[0]:
-                try:
-                    await msg.remove_reaction(emoji_list[0], ctx.author)
-                except discord.Forbidden:
-                    pass
-                counted -= 1
-                if counted < 0:
-                    await ctx.send("이미 첫번째 페이지입니다.", delete_after=3)
-                    counted = 0
-                    continue
-                if embed is True:
-                    await msg.edit(embed=lists[counted])
-                else:
-                    await msg.edit(content=lists[counted])
-    except asyncio.TimeoutError:
-        await ctx.send("시간을 초과했습니다.", delete_after=5)
-        try:
-            await msg.clear_reactions()
-        except discord.Forbidden:
-            await msg.remove_reaction(emoji_list[0], msg.author)
-            await msg.remove_reaction(emoji_list[1], msg.author)
-            await msg.remove_reaction(emoji_list[2], msg.author)
-        return
-
-
-class Music(commands.Cog):
-    def __init__(self, bot: KSBot):
-        self.bot = bot
-        self.queues = {}
-
-    async def queue_task(self, ctx: commands.Context, voice: VoiceClient):
-        bot = self.bot
-        while True:
-            if str(ctx.guild.id) not in self.queues.keys():
-                await ctx.send(f"`{voice.channel}`에서 나갈께요.")
-                await voice.disconnect(force=True)
-                break
-            queue = self.queues[str(ctx.guild.id)]
-            if voice.is_playing() or voice.is_paused():
-                await asyncio.sleep(1)
-                continue
-            elif not voice.is_playing() and len(queue.keys()) == 1 and queue["playing"]["loop"] is not True:
-                await ctx.send(f"음악이 끝났어요. `{voice.channel}`에서 나갈께요.")
-                await voice.disconnect(force=True)
-                break
-            vol = queue["playing"]["vol"]
-            if queue["playing"]["loop"] is True:
-                tgt_url = queue["playing"]["tgt_url"]
-                voice.play(discord.FFmpegPCMAudio(tgt_url, before_options=get_youtube.before_args))
-                voice.source = discord.PCMVolumeTransformer(voice.source)
-                voice.source.volume = vol
-                await asyncio.sleep(3)
-                continue
-            if queue["playing"]["random"]:
-                queue_keys = [str(x) for x in queue.keys() if not x == "playing"]
-                tgt_name = str(random.choice(queue_keys))
-                tgt_queue = queue[tgt_name]
-            else:
-                tgt_name = list(queue.keys())[1]
-                tgt_queue = queue[tgt_name]
-            vid_url = tgt_queue["vid_url"]
-            vid_title = tgt_queue["vid_title"]
-            vid_author = tgt_queue["vid_author"]
-            vid_channel_url = tgt_queue["vid_channel_url"]
-            tgt_url = tgt_queue["tgt_url"]
-            thumb = tgt_queue["thumb"]
-            req_by = bot.get_user(int(tgt_queue["req_by"]))
-            voice.play(discord.FFmpegPCMAudio(tgt_url, before_options=get_youtube.before_args))
-            voice.source = discord.PCMVolumeTransformer(voice.source)
-            voice.source.volume = vol
-            embed = discord.Embed(title="유튜브 음악 재생", color=discord.Colour.from_rgb(255, 0, 0))
-            embed.add_field(
-                name="재생 시작",
-                value=f"업로더: [`{vid_author}`]({vid_channel_url})\n제목: [`{vid_title}`]({vid_url})",
-                inline=False,
-            )
-            embed.add_field(name="요청자", value=f"{req_by.mention} (`{req_by}`)", inline=False)
-            embed.set_image(url=str(thumb))
-            queue["playing"]["vid_url"] = vid_url
-            queue["playing"]["vid_title"] = vid_title
-            queue["playing"]["vid_author"] = vid_author
-            queue["playing"]["vid_channel_url"] = vid_channel_url
-            queue["playing"]["thumb"] = thumb
-            queue["playing"]["tgt_url"] = tgt_url
-            queue["playing"]["req_by"] = tgt_queue["req_by"]
-            await ctx.send(embed=embed)
-            del queue[tgt_name]
-            await asyncio.sleep(3)
-
-    @staticmethod
-    async def check_voice(ctx: commands.Context, resume=False):
-        voice: VoiceClient = ctx.voice_client
-        user_voice = ctx.message.author.voice
-        if user_voice is None:
-            await ctx.send(f"{ctx.author.mention} 먼저 음성 채널에 들어와주세요.")
-            return False
-        if voice is None:
-            await ctx.send(f"{ctx.author.mention} 재생을 먼저 해주세요.")
-            return False
-        if not voice.is_playing():
-            if resume is True:
-                return True
-            await ctx.send(f"{ctx.author.mention} 현재 재생중인 노래가 없습니다.")
+    def pop_next(self) -> Track | None:
+        """다음에 재생할 곡을 꺼낸다. 반복 재생이면 현재 곡을 유지한다."""
+        if self.loop and self.current is not None:
+            return self.current
+        if not self.queue:
             return None
+        index = random.randrange(len(self.queue)) if self.shuffle else 0
+        return self.queue.pop(index)
+
+
+def _guild_icon_url(guild: discord.Guild) -> str | None:
+    return guild.icon.url if guild.icon else None
+
+
+def _track_value(info: TrackInfo) -> str:
+    return f'업로더: [`{info.uploader}`]({info.uploader_url})\n제목: [`{info.title}`]({info.webpage_url})'
+
+
+class ConfirmView(discord.ui.View):
+    """⭕/❌ 버튼으로 확인을 받는 뷰."""
+
+    def __init__(self, author_id: int, timeout: float = CONFIRM_TIMEOUT):
+        super().__init__(timeout=timeout)
+        self.author_id = author_id
+        self.value: bool | None = None
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.author_id:
+            await interaction.response.send_message('명령을 실행한 사람만 선택할 수 있어요.', ephemeral=True)
+            return False
         return True
 
-    @commands.command(
-        name="재생",
-        help='음악을 재생할 수 있는 명령어. 사용법: !재생 <유튜브 링크> 또는 !재생 <검색어>',
-        description="음악을 재생합니다.",
-        aliases=["play"],
-    )
-    async def play(self, ctx: commands.Context, *, url):
-        try:
-            msg = await ctx.send(f"잠시만 기다려주세요...")
-            embed = discord.Embed(title="유튜브 음악 재생", color=discord.Colour.from_rgb(255, 0, 0))
-            user_voice = ctx.message.author.voice
-            if user_voice is None:
-                return await msg.edit(content=f"{ctx.author.mention} 먼저 음성 채널에 들어와주세요.")
-            voice_channel = user_voice.channel
-            if voice_channel is None or voice_channel is False:
-                return await msg.edit(content=f"{ctx.author.mention} 먼저 음성 채널에 들어와주세요.")
-            voice: VoiceClient = ctx.voice_client
-            if voice is None:
-                await voice_channel.connect()
-                voice = ctx.voice_client
-            if not voice.is_playing() and not voice.is_paused():
-                self.queues[str(ctx.guild.id)] = {}
-            queue = self.queues[str(ctx.guild.id)]
-            search_res = await get_youtube.get_youtube(url)
-            vid_url = search_res["webpage_url"]
-            vid_title = search_res["title"]
-            vid_author = search_res["uploader"]
-            vid_channel_url = search_res["uploader_url"]
-            target_url = search_res["target_url"]
-            thumb = search_res["thumbnail"]
-            default_vol = 0.3
-            embed.set_image(url=str(thumb))
-            if voice.is_playing():
-                current_time = round(time.time())
-                queue[str(current_time)] = {}
-                queue[str(current_time)]["vid_url"] = vid_url
-                queue[str(current_time)]["vid_title"] = vid_title
-                queue[str(current_time)]["vid_author"] = vid_author
-                queue[str(current_time)]["vid_channel_url"] = vid_channel_url
-                queue[str(current_time)]["thumb"] = thumb
-                queue[str(current_time)]["tgt_url"] = target_url
-                queue[str(current_time)]["req_by"] = ctx.author.id
-                embed.add_field(
-                    name="재생 목록에 추가됨",
-                    value=f"업로더: [`{vid_author}`]({vid_channel_url})\n제목: [`{vid_title}`]({vid_url})",
-                    inline=False,
-                )
-                embed.add_field(name="요청자", value=f"{ctx.author.mention} (`{ctx.author}`)", inline=False)
-                return await msg.edit(content="", embed=embed)
+    @discord.ui.button(label='확인', emoji='⭕', style=discord.ButtonStyle.success)
+    async def confirm(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.value = True
+        await interaction.response.defer()
+        self.stop()
 
-            voice.play(discord.FFmpegPCMAudio(target_url, before_options=get_youtube.before_args))
-            voice.source = discord.PCMVolumeTransformer(voice.source)
-            voice.source.volume = default_vol
-            embed.add_field(
-                name="재생 시작",
-                value=f"업로더: [`{vid_author}`]({vid_channel_url})\n제목: [`{vid_title}`]({vid_url})",
-                inline=False,
-            )
-            embed.add_field(name="요청자", value=f"{ctx.author.mention} (`{ctx.author}`)", inline=False)
-            await msg.edit(content="", embed=embed)
-            queue["playing"] = {}
-            queue["playing"]["vid_url"] = vid_url
-            queue["playing"]["vid_title"] = vid_title
-            queue["playing"]["vid_author"] = vid_author
-            queue["playing"]["vid_channel_url"] = vid_channel_url
-            queue["playing"]["thumb"] = thumb
-            queue["playing"]["tgt_url"] = target_url
-            queue["playing"]["vol"] = default_vol
-            queue["playing"]["req_by"] = ctx.author.id
-            queue["playing"]["loop"] = False
-            queue["playing"]["random"] = False
-            await asyncio.create_task(self.queue_task(ctx, voice))
-        except Exception as e:
-            print(e)
-            await msg.edit(content=f"{ctx.author.mention} 재생에 실패했습니다.")
+    @discord.ui.button(label='취소', emoji='❌', style=discord.ButtonStyle.danger)
+    async def cancel(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.value = False
+        await interaction.response.defer()
+        self.stop()
+
+
+class PaginatorView(discord.ui.View):
+    """임베드 목록을 버튼으로 넘겨보는 뷰."""
+
+    def __init__(self, author_id: int, pages: list[discord.Embed], timeout: float = CONFIRM_TIMEOUT):
+        super().__init__(timeout=timeout)
+        self.author_id = author_id
+        self.pages = pages
+        self.index = 0
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return interaction.user.id == self.author_id
+
+    async def _show(self, interaction: discord.Interaction) -> None:
+        self.index = max(0, min(self.index, len(self.pages) - 1))
+        await interaction.response.edit_message(embed=self.pages[self.index], view=self)
+
+    @discord.ui.button(emoji='⬅', style=discord.ButtonStyle.secondary)
+    async def previous(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.index -= 1
+        await self._show(interaction)
+
+    @discord.ui.button(emoji='⏹', style=discord.ButtonStyle.secondary)
+    async def stop_pages(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        await interaction.response.edit_message(view=None)
+        self.stop()
+
+    @discord.ui.button(emoji='➡', style=discord.ButtonStyle.secondary)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button) -> None:
+        self.index += 1
+        await self._show(interaction)
+
+
+async def confirm(ctx: commands.Context, message: discord.Message, timeout: float = CONFIRM_TIMEOUT) -> bool | None:
+    """확인/취소를 물어본다. 승인=True, 거절=False, 시간초과=None."""
+    view = ConfirmView(author_id=ctx.author.id, timeout=timeout)
+    await message.edit(view=view)
+    await view.wait()
+    await message.edit(view=None)
+    return view.value
+
+
+class Music(commands.Cog, name='음악'):
+    """유튜브 음악 재생."""
+
+    def __init__(self, bot: KSBot):
+        self.bot = bot
+        self.players: dict[int, GuildPlayer] = {}
+
+    async def cog_unload(self) -> None:
+        for player in list(self.players.values()):
+            await self._teardown(player)
+
+    # ---------- 내부 헬퍼 ----------
+
+    def get_player(self, ctx: commands.Context) -> GuildPlayer | None:
+        return self.players.get(ctx.guild.id)
+
+    async def _teardown(self, player: GuildPlayer) -> None:
+        self.players.pop(player.guild_id, None)
+        if player.task and not player.task.done():
+            player.task.cancel()
+        if player.voice.is_connected():
+            await player.voice.disconnect(force=True)
+
+    async def ensure_voice(self, ctx: commands.Context, *, allow_paused: bool = False) -> GuildPlayer | None:
+        """음성 채널/재생 상태를 검사하고 플레이어를 반환한다. 문제가 있으면 안내 후 None."""
+        if ctx.author.voice is None:
+            await ctx.send(f'{ctx.author.mention} 먼저 음성 채널에 들어와주세요.')
+            return None
+
+        player = self.get_player(ctx)
+        if player is None or not player.voice.is_connected():
+            await ctx.send(f'{ctx.author.mention} 재생을 먼저 해주세요.')
+            return None
+
+        if not player.voice.is_playing() and not (allow_paused and player.voice.is_paused()):
+            await ctx.send(f'{ctx.author.mention} 현재 재생중인 노래가 없습니다.')
+            return None
+
+        return player
+
+    def _now_playing_embed(self, track: Track, *, title: str, field_name: str) -> discord.Embed:
+        embed = discord.Embed(title=title, color=MUSIC_EMBED_COLOR)
+        embed.add_field(name=field_name, value=_track_value(track.info), inline=False)
+        requester = self.bot.get_user(track.requester_id)
+        if requester is not None:
+            embed.add_field(name='요청자', value=f'{requester.mention} (`{requester}`)', inline=False)
+        if track.info.thumbnail:
+            embed.set_image(url=track.info.thumbnail)
+        return embed
+
+    async def _player_loop(self, player: GuildPlayer) -> None:
+        """대기열이 빌 때까지 순서대로 재생한다."""
+        try:
+            while True:
+                track = player.pop_next()
+                if track is None:
+                    await player.text_channel.send(f'음악이 끝났어요. `{player.voice.channel}`에서 나갈께요.')
+                    break
+
+                is_repeat = player.loop and player.current is track
+                player.current = track
+                player.next_event.clear()
+
+                source = discord.PCMVolumeTransformer(
+                    discord.FFmpegPCMAudio(track.info.target_url, before_options=FFMPEG_BEFORE_ARGS),
+                    volume=player.volume,
+                )
+                player.voice.play(source, after=lambda error: self._on_track_end(player, error))
+
+                if not is_repeat:
+                    await player.text_channel.send(embed=self._now_playing_embed(track, title='유튜브 음악 재생', field_name='재생 시작'))
+
+                await player.next_event.wait()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception('재생 루프에서 오류가 발생했습니다. guild_id=%s', player.guild_id)
+        finally:
+            player.task = None
+            await self._teardown(player)
+
+    def _on_track_end(self, player: GuildPlayer, error: Exception | None) -> None:
+        """FFmpeg 재생 완료 콜백(별도 스레드에서 호출된다)."""
+        if error:
+            logger.error('재생 중 오류가 발생했습니다. guild_id=%s, error=%s', player.guild_id, error)
+        self.bot.loop.call_soon_threadsafe(player.next_event.set)
+
+    async def _toggle_option(self, ctx: commands.Context, *, attribute: str, on_text: str, off_text: str, label: str) -> None:
+        """반복/랜덤 재생처럼 확인을 거쳐 켜고 끄는 옵션을 처리한다."""
+        player = await self.ensure_voice(ctx, allow_paused=True)
+        if player is None:
+            return
+
+        turning_on = not getattr(player, attribute)
+        question = f'{ctx.author.mention} 정말로 {label}을(를) {"켤까요" if turning_on else "해제할까요"}?'
+        message = await ctx.send(question)
+
+        if await confirm(ctx, message) is not True:
+            await message.edit(content=f'{ctx.author.mention} {label} 변경이 취소되었습니다.')
+            return
+
+        setattr(player, attribute, turning_on)
+        await message.edit(content=on_text if turning_on else off_text)
+
+    # ---------- 커맨드 ----------
+
+    @commands.command(
+        name='재생',
+        help='음악을 재생할 수 있는 명령어. 사용법: /재생 <유튜브 링크> 또는 /재생 <검색어>',
+        description='음악을 재생합니다.',
+        aliases=['play'],
+    )
+    @commands.guild_only()
+    async def play(self, ctx: commands.Context, *, url: str) -> None:
+        message = await ctx.send('잠시만 기다려주세요...')
+
+        if ctx.author.voice is None or ctx.author.voice.channel is None:
+            await message.edit(content=f'{ctx.author.mention} 먼저 음성 채널에 들어와주세요.')
+            return
+
+        info = await get_youtube(url)
+        if not info.is_playable:
+            await message.edit(content=f'{ctx.author.mention} 재생할 수 있는 음악을 찾지 못했습니다.')
+            return
+
+        track = Track(info=info, requester_id=ctx.author.id)
+
+        player = self.get_player(ctx)
+        if player is None or not player.voice.is_connected():
+            voice = ctx.voice_client or await ctx.author.voice.channel.connect()
+            player = GuildPlayer(guild_id=ctx.guild.id, voice=voice, text_channel=ctx.channel)
+            self.players[ctx.guild.id] = player
+
+        player.queue.append(track)
+        is_first = player.task is None
+
+        embed = self._now_playing_embed(track, title='유튜브 음악 재생', field_name='재생 시작' if is_first else '재생 목록에 추가됨')
+        await message.edit(content=None, embed=embed)
+
+        if is_first:
+            player.task = asyncio.create_task(self._player_loop(player))
 
     @commands.command(
         name='반복',
         help='재생중인 음악을 무한 반복하거나 무한 반복을 해제합니다.',
-        description="재생중인 음악을 무한 반복하거나 무한 반복을 해제합니다.",
-        aliases=["loop", "repeat"],
+        description='재생중인 음악을 무한 반복하거나 무한 반복을 해제합니다.',
+        aliases=['loop', 'repeat'],
     )
-    async def music_loop(self, ctx: commands.Context):
-        voice_ok = await self.check_voice(ctx)
-        if not voice_ok:
-            return
-        queue = self.queues[str(ctx.guild.id)]
-        if queue["playing"]["loop"] is not True:
-            msg = await ctx.send(f"{ctx.author.mention} 정말로 이 음악을 무한반복할까요?")
-            res = await confirm(self.bot, ctx, msg)
-            if res is not True:
-                return await msg.edit(content=f"{ctx.author.mention} 무한반복이 취소되었습니다.")
-            queue["playing"]["loop"] = True
-            return await msg.edit(content=f"{ctx.author.mention} 이 음악을 무한반복할께요!")
-        elif queue["playing"]["loop"] is True:
-            msg = await ctx.send(f"{ctx.author.mention} 정말로 무한반복을 해제할까요?")
-            res = await confirm(self.bot, ctx, msg)
-            if res is not True:
-                return await msg.edit(content=f"{ctx.author.mention} 무한반복 해제가 취소되었습니다.")
-            queue["playing"]["loop"] = False
-            return await msg.edit(content=f"{ctx.author.mention} 무한반복이 해제되었습니다.")
+    @commands.guild_only()
+    async def music_loop(self, ctx: commands.Context) -> None:
+        await self._toggle_option(
+            ctx,
+            attribute='loop',
+            label='무한반복',
+            on_text=f'{ctx.author.mention} 이 음악을 무한반복할께요!',
+            off_text=f'{ctx.author.mention} 무한반복이 해제되었습니다.',
+        )
 
     @commands.command(
-        name="랜덤재생",
+        name='랜덤재생',
         help='대기 리스트에서 음악을 무작위로 재생합니다.',
-        description="대기 리스트에서 음악을 무작위로 재생합니다.",
-        aliases=["random", 'shuffle'],
+        description='대기 리스트에서 음악을 무작위로 재생합니다.',
+        aliases=['random', 'shuffle'],
     )
-    async def shuffle(self, ctx: commands.Context):
-        voice_ok = await self.check_voice(ctx)
-        if not voice_ok:
+    @commands.guild_only()
+    async def shuffle(self, ctx: commands.Context) -> None:
+        await self._toggle_option(
+            ctx,
+            attribute='shuffle',
+            label='랜덤 재생',
+            on_text=f'{ctx.author.mention} 랜덤 재생이 켜졌어요!',
+            off_text=f'{ctx.author.mention} 랜덤 재생이 해제되었습니다.',
+        )
+
+    @commands.command(name='스킵', help='재생중인 음악을 스킵합니다.', description='재생중인 음악을 스킵합니다.', aliases=['skip'])
+    @commands.guild_only()
+    async def skip(self, ctx: commands.Context) -> None:
+        player = await self.ensure_voice(ctx)
+        if player is None:
             return
-        queue = self.queues[str(ctx.guild.id)]
-        if queue["playing"]["random"] is not True:
-            msg = await ctx.send(f"{ctx.author.mention} 정말로 랜덤 재생 기능을 켤까요?")
-            res = await confirm(self.bot, ctx, msg)
-            if res is not True:
-                return await msg.edit(content=f"{ctx.author.mention} 랜덤 재생이 취소되었습니다.")
-            queue["playing"]["random"] = True
-            return await msg.edit(content=f"{ctx.author.mention} 랜덤 재생이 켜졌어요!")
-        elif queue["playing"]["random"] is True:
-            msg = await ctx.send(f"{ctx.author.mention} 정말로 랜덤 재생을 해제할까요?")
-            res = await confirm(self.bot, ctx, msg)
-            if res is not True:
-                return await msg.edit(content=f"{ctx.author.mention} 랜덤 재생 해제가 취소되었습니다.")
-            queue["playing"]["random"] = False
-            return await msg.edit(content=f"{ctx.author.mention} 랜덤 재생이 해제되었습니다.")
+        # 스킵은 반복 재생보다 우선한다.
+        player.current = None
+        player.voice.stop()
+        await ctx.send(f'{ctx.author.mention} 다음 곡으로 넘어갈께요.')
+
+    @commands.command(name='정지', help='음악 재생을 멈춥니다.', description='음악 재생을 멈춥니다.', aliases=['stop'])
+    @commands.guild_only()
+    async def stop(self, ctx: commands.Context) -> None:
+        player = await self.ensure_voice(ctx, allow_paused=True)
+        if player is None:
+            return
+        player.queue.clear()
+        player.loop = False
+        player.current = None
+        player.voice.stop()
+        await ctx.send(f'{ctx.author.mention} 재생을 멈췄습니다.')
+
+    @commands.command(name='일시정지', help='음악을 일시정지합니다.', description='음악을 일시정지합니다.', aliases=['pause'])
+    @commands.guild_only()
+    async def pause(self, ctx: commands.Context) -> None:
+        player = await self.ensure_voice(ctx)
+        if player is None:
+            return
+        player.voice.pause()
+        await ctx.send(f'{ctx.author.mention} 플레이어를 일시정지했습니다.')
+
+    @commands.command(name='계속재생', help='음악 일시정지를 해제합니다.', description='음악 일시정지를 해제합니다.', aliases=['resume'])
+    @commands.guild_only()
+    async def resume(self, ctx: commands.Context) -> None:
+        player = await self.ensure_voice(ctx, allow_paused=True)
+        if player is None:
+            return
+        player.voice.resume()
+        await ctx.send(f'{ctx.author.mention} 음악을 계속 재생합니다.')
 
     @commands.command(
-        name="스킵",
-        help='재생중인 음악을 스킵합니다.',
-        description="재생중인 음악을 스킵합니다.",
-        aliases=["skip"],
-    )
-    async def skip(self, ctx: commands.Context):
-        voice = ctx.voice_client
-        voice_ok = await self.check_voice(ctx)
-        if not voice_ok:
-            return
-        voice.stop()
-
-    @commands.command(
-        name="정지",
-        help='음악 재생을 멈춥니다.',
-        description="음악 재생을 멈춥니다.",
-        aliases=["stop"],
-    )
-    async def stop(self, ctx: commands.Context):
-        voice = ctx.voice_client
-        voice_ok = await self.check_voice(ctx)
-        if not voice_ok:
-            return
-        del self.queues[str(ctx.guild.id)]
-        voice.stop()
-
-    @commands.command(
-        name="일시정지",
-        help='음악을 일시정지합니다.',
-        description="음악을 일시정지합니다.",
-        aliases=["pause"],
-    )
-    async def pause(self, ctx: commands.Context):
-        voice = ctx.voice_client
-        voice_ok = await self.check_voice(ctx)
-        if not voice_ok:
-            return
-        voice.pause()
-        await ctx.send(f"{ctx.author.mention} 플레이어를 일시정지했습니다.")
-
-    @commands.command(
-        name="계속재생",
-        help='음악 일시정지를 해제합니다.',
-        description="음악 일시정지를 해제합니다.",
-        aliases=["resume"],
-    )
-    async def resume(self, ctx: commands.Context):
-        voice: VoiceClient = ctx.voice_client
-        voice_ok = await self.check_voice(ctx, resume=True)
-        if voice_ok is None:
-            pass
-        elif not voice_ok:
-            return
-        voice.resume()
-        await ctx.send(f"{ctx.author.mention} 음악을 계속 재생합니다.")
-
-    @commands.command(
-        name="강제연결해제",
+        name='강제연결해제',
         help='봇 오류로 음악 재생에 문제가 발생했을 때 강제로 접속을 해제합니다.',
-        description="봇 오류로 음악 재생에 문제가 발생했을 때 강제로 접속을 해제합니다.",
-        aliases=["나가", "제발나가", "quit", 'leave', 'l', "ㅣ", "dc"],
+        description='봇 오류로 음악 재생에 문제가 발생했을 때 강제로 접속을 해제합니다.',
+        aliases=['나가', '제발나가', 'quit', 'leave', 'l', 'ㅣ', 'dc'],
     )
-    async def force_quit(self, ctx: commands.Context):
-        voice = ctx.voice_client
-        await voice.disconnect(force=True)
-        await ctx.send("강제 연결 해제가 완료되었습니다.")
-
-    @commands.command(
-        name="볼륨",
-        help='음악의 볼륨을 조절합니다.',
-        description="음악의 볼륨을 조절합니다.",
-        aliases=["volume"],
-    )
-    async def volume(self, ctx: commands.Context, vol: int = None):
-        if vol > 100:
-            return await ctx.send("숫자가 너무 큽니다.")
-        if vol <= 0:
-            return await ctx.send("숫자가 너무 작습니다.")
-        queue = self.queues[str(ctx.guild.id)]
-        voice_ok = await self.check_voice(ctx)
-        if not voice_ok:
+    @commands.guild_only()
+    async def force_quit(self, ctx: commands.Context) -> None:
+        player = self.get_player(ctx)
+        if player is not None:
+            await self._teardown(player)
+        elif ctx.voice_client is not None:
+            await ctx.voice_client.disconnect(force=True)
+        else:
+            await ctx.send('연결된 음성 채널이 없습니다.')
             return
-        current_vol = float(queue["playing"]["vol"])
+        await ctx.send('강제 연결 해제가 완료되었습니다.')
+
+    @commands.command(name='볼륨', help='음악의 볼륨을 조절합니다.', description='음악의 볼륨을 조절합니다.', aliases=['volume'])
+    @commands.guild_only()
+    async def volume(self, ctx: commands.Context, vol: int | None = None) -> None:
+        player = await self.ensure_voice(ctx, allow_paused=True)
+        if player is None:
+            return
+
         if vol is None:
-            return await ctx.send(f"{ctx.author.mention} 현재 볼륨은 `{current_vol * 100}%` 입니다.")
-        queue["playing"]["vol"] = vol / 100
-        ctx.voice_client.source.volume = vol / 100
-        await ctx.send(f"{ctx.author.mention} 볼륨이 `{vol}%`로 변경되었습니다.")
+            await ctx.send(f'{ctx.author.mention} 현재 볼륨은 `{player.volume * 100:.0f}%` 입니다.')
+            return
+        if vol > 100:
+            await ctx.send('숫자가 너무 큽니다.')
+            return
+        if vol <= 0:
+            await ctx.send('숫자가 너무 작습니다.')
+            return
 
-    @commands.command(
-        name="대기리스트",
-        help='현재 대기 리스트를 보여줍니다.',
-        description="현재 대기 리스트를 보여줍니다.",
-        aliases=["playlist"],
-    )
-    async def queue_list(self, ctx: commands.Context):
-        if str(ctx.guild.id) not in self.queues.keys():
-            return await ctx.send("현재 재생중이 아닙니다.")
-        queue_list = self.queues[str(ctx.guild.id)]
-        temp_ql_embed = discord.Embed(title="뮤직 대기 리스트", color=discord.Colour.from_rgb(225, 225, 225))
-        temp_ql_embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
-        playing_vid_url = queue_list["playing"]["vid_url"]
-        playing_vid_title = queue_list["playing"]["vid_title"]
-        playing_vid_author = queue_list["playing"]["vid_author"]
-        playing_vid_channel_url = queue_list["playing"]["vid_channel_url"]
-        playing_thumb = queue_list["playing"]["thumb"]
-        vol = queue_list["playing"]["vol"]
-        one_embed = discord.Embed(title="현재 재생중", colour=discord.Color.green())
-        one_embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
-        one_embed.set_image(url=playing_thumb)
-        req_by = self.bot.get_user(int(queue_list["playing"]["req_by"]))
-        one_embed.add_field(
-            name="정보",
-            value=f"업로더: [`{playing_vid_author}`]({playing_vid_channel_url})\n제목: [`{playing_vid_title}`]({playing_vid_url})",
-            inline=False,
-        )
-        one_embed.add_field(name="요청자", value=f"{req_by.mention} (`{req_by}`)", inline=False)
-        one_embed.add_field(name="현재 볼륨", value=f"{float(vol) * 100}%", inline=False)
-        one_embed.add_field(name="대기중인 음악 개수", value=f"{len([x for x in queue_list.keys() if not x == 'playing'])}개")
-        if ctx.voice_client.is_paused():
-            one_embed.add_field(name="플레이어 상태", value="현재 일시정지 상태입니다.", inline=False)
-        elif queue_list["playing"]["random"]:
-            one_embed.add_field(name="플레이어 상태", value="랜덤 재생 기능이 켜져있습니다.", inline=False)
-        if len(queue_list.keys()) == 1:
-            return await ctx.send(embed=one_embed)
-        ql_num = 1
-        embed_list = [one_embed]
-        ql_embed = None
-        for x in queue_list.keys():
-            if x == "playing":
-                ql_embed = temp_ql_embed.copy()
-                continue
-            if ql_num != 1 and (ql_num - 1) % 5 == 0:
-                embed_list.append(ql_embed)
-                ql_embed = temp_ql_embed.copy()
-            queue_vid_url = queue_list[x]["vid_url"]
-            queue_vid_title = queue_list[x]["vid_title"]
-            queue_req_by = self.bot.get_user(int(queue_list[x]["req_by"]))
-            ql_embed.add_field(
-                name="대기리스트" + str(ql_num),
-                value=f"제목: [`{queue_vid_title}`]({queue_vid_url})\n요청자: {queue_req_by.mention} (`{queue_req_by}`)",
-                inline=False,
-            )
-            ql_num += 1
-        next_song = queue_list[list(queue_list.keys())[1]]
-        next_embed = discord.Embed(title="다음곡", color=discord.Colour.red())
-        next_vid_url = next_song["vid_url"]
-        next_vid_title = next_song["vid_title"]
-        next_vid_author = next_song["vid_author"]
-        next_vid_channel_url = next_song["vid_channel_url"]
-        next_thumb = next_song["thumb"]
-        next_req_by = self.bot.get_user(int(next_song["req_by"]))
-        next_embed.add_field(
-            name="정보",
-            value=f"업로더: [`{next_vid_author}`]({next_vid_channel_url})\n제목: [`{next_vid_title}`]({next_vid_url})",
-            inline=False,
-        )
-        next_embed.add_field(name="요청자", value=f"{next_req_by.mention} (`{next_req_by}`)", inline=False)
-        next_embed.set_author(name=ctx.guild.name, icon_url=ctx.guild.icon_url)
-        next_embed.set_image(url=next_thumb)
-        embed_list.append(ql_embed)
-        embed_list.append(next_embed)
-        await start_page(self.bot, ctx, embed_list, embed=True)
+        player.volume = vol / 100
+        if isinstance(player.voice.source, discord.PCMVolumeTransformer):
+            player.voice.source.volume = player.volume
+        await ctx.send(f'{ctx.author.mention} 볼륨이 `{vol}%`로 변경되었습니다.')
+
+    @commands.command(name='대기리스트', help='현재 대기 리스트를 보여줍니다.', description='현재 대기 리스트를 보여줍니다.', aliases=['playlist'])
+    @commands.guild_only()
+    async def queue_list(self, ctx: commands.Context) -> None:
+        player = self.get_player(ctx)
+        if player is None or player.current is None:
+            await ctx.send('현재 재생중이 아닙니다.')
+            return
+
+        pages = self._build_queue_pages(ctx, player)
+        if len(pages) == 1:
+            await ctx.send(embed=pages[0])
+            return
+        await ctx.send(embed=pages[0], view=PaginatorView(author_id=ctx.author.id, pages=pages))
+
+    def _build_queue_pages(self, ctx: commands.Context, player: GuildPlayer) -> list[discord.Embed]:
+        icon_url = _guild_icon_url(ctx.guild)
+
+        now_embed = discord.Embed(title='현재 재생중', colour=discord.Color.green())
+        now_embed.set_author(name=ctx.guild.name, icon_url=icon_url)
+        now_embed.add_field(name='정보', value=_track_value(player.current.info), inline=False)
+        requester = self.bot.get_user(player.current.requester_id)
+        if requester is not None:
+            now_embed.add_field(name='요청자', value=f'{requester.mention} (`{requester}`)', inline=False)
+        now_embed.add_field(name='현재 볼륨', value=f'{player.volume * 100:.0f}%', inline=False)
+        now_embed.add_field(name='대기중인 음악 개수', value=f'{len(player.queue)}개')
+        if player.voice.is_paused():
+            now_embed.add_field(name='플레이어 상태', value='현재 일시정지 상태입니다.', inline=False)
+        elif player.shuffle:
+            now_embed.add_field(name='플레이어 상태', value='랜덤 재생 기능이 켜져있습니다.', inline=False)
+        if player.current.info.thumbnail:
+            now_embed.set_image(url=player.current.info.thumbnail)
+
+        pages = [now_embed]
+        for start in range(0, len(player.queue), QUEUE_PAGE_SIZE):
+            chunk = player.queue[start : start + QUEUE_PAGE_SIZE]
+            embed = discord.Embed(title='뮤직 대기 리스트', color=discord.Colour.from_rgb(225, 225, 225))
+            embed.set_author(name=ctx.guild.name, icon_url=icon_url)
+            for offset, track in enumerate(chunk, start=start + 1):
+                track_requester = self.bot.get_user(track.requester_id)
+                requester_text = f'{track_requester.mention} (`{track_requester}`)' if track_requester else '알 수 없음'
+                embed.add_field(
+                    name=f'대기리스트{offset}',
+                    value=f'제목: [`{track.title}`]({track.info.webpage_url})\n요청자: {requester_text}',
+                    inline=False,
+                )
+            pages.append(embed)
+
+        return pages
 
 
-async def setup(bot: KSBot):
+async def setup(bot: KSBot) -> None:
     await bot.add_cog(Music(bot))

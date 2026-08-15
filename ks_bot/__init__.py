@@ -1,1 +1,3 @@
-from .ks_bot import KSBot
+"""KS 디스코드 봇 패키지."""
+
+__version__ = '0.2.0'

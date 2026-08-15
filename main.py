@@ -1,37 +1,11 @@
-import asyncio
-import os
+"""하위 호환용 실행 스크립트. 실제 구현은 `ks_bot.__main__`에 있다.
 
-from discord import Intents
+권장 실행 방법: `python -m ks_bot`
+"""
 
-from ks_bot.ks_bot import KSBot
-from ks_bot.core.help import CustomHelpCommand
-from ks_bot.utils import *
+import sys
 
-intents = Intents.all()
-intents.members = True
-bot = KSBot(command_prefix='/', intents=intents)
-
-bot.help_command = CustomHelpCommand()
-
-
-async def load_extensions():
-    cogs_folder = 'ks_bot/cogs'
-    abs_cogs_path = os.path.join(os.path.abspath(os.path.dirname(__file__)), cogs_folder)
-    for ext in os.listdir(abs_cogs_path):
-        if ext.endswith(".py"):
-            module_name = ext.split('.')[0]
-            module_import_path = f'{cogs_folder.replace("/", ".")}.{module_name}'
-            print(f'Load {module_import_path}')
-            await bot.load_extension(module_import_path)
-
-
-async def main() -> None:
-    DISCORD_TOKEN = get_discord_token()
-
-    async with bot:
-        await load_extensions()
-        await bot.start(token=DISCORD_TOKEN)
-
+from ks_bot.__main__ import main
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    sys.exit(main())
