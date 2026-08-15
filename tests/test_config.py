@@ -8,7 +8,8 @@ from pathlib import Path
 import pytest
 
 from ks_bot.common.errors import ConfigError
-from ks_bot.config import Settings, load_dotenv, parse_dotenv, read_env_text
+from ks_bot.common.giveaway import Store
+from ks_bot.config import PROJECT_ROOT, Settings, load_dotenv, parse_dotenv, read_env_text
 
 _ENV_KEYS = (
     'DISCORD_TOKEN',
@@ -21,6 +22,11 @@ _ENV_KEYS = (
     'KS_BOT_MEMBER_STATUS_INTERVAL_MINUTES',
     'KS_BOT_MAX_MATCH_NUM',
     'KS_BOT_PLAYER_CACHE_TTL_HOURS',
+    'KS_BOT_GIVEAWAY_CHANNEL_ID',
+    'KS_BOT_GIVEAWAY_INTERVAL_MINUTES',
+    'KS_BOT_GIVEAWAY_STORES',
+    'KS_BOT_GIVEAWAY_MENTION_ROLE_ID',
+    'KS_BOT_GIVEAWAY_INCLUDE_UPCOMING',
 )
 
 
@@ -71,6 +77,44 @@ class TestFromEnv:
 
         with pytest.raises(ConfigError):
             Settings.from_env()
+
+
+class TestGiveawayStores:
+    def test_default_stores(self, monkeypatch):
+        monkeypatch.setenv('DISCORD_TOKEN', 'token')
+        assert Settings.from_env().giveaway_stores == (Store.STEAM, Store.EPIC, Store.GOG)
+
+    def test_parses_list(self, monkeypatch):
+        monkeypatch.setenv('DISCORD_TOKEN', 'token')
+        monkeypatch.setenv('KS_BOT_GIVEAWAY_STORES', ' steam , itch ,steam, ')
+
+        assert Settings.from_env().giveaway_stores == (Store.STEAM, Store.ITCH)
+
+    def test_unknown_store_raises(self, monkeypatch):
+        """오타를 조용히 무시하면 알림이 통째로 사라진다."""
+        monkeypatch.setenv('DISCORD_TOKEN', 'token')
+        monkeypatch.setenv('KS_BOT_GIVEAWAY_STORES', 'steam,스팀')
+
+        with pytest.raises(ConfigError) as exc_info:
+            Settings.from_env()
+        assert '스팀' in exc_info.value.message
+
+    def test_every_store_is_documented_in_env_example(self):
+        """`.env.example`이 실제 선택지와 어긋나면 사용자가 값을 알 수 없다."""
+        example = (PROJECT_ROOT / '.env.example').read_text(encoding='utf-8')
+
+        missing = [store.value for store in Store if store.value not in example]
+        assert missing == []
+
+    def test_env_example_store_list_is_parsable(self, monkeypatch):
+        """예시로 적어둔 '전부 받기' 줄이 실제로 파싱되는지 확인한다."""
+        example = (PROJECT_ROOT / '.env.example').read_text(encoding='utf-8')
+        line = next(line for line in example.splitlines() if 'KS_BOT_GIVEAWAY_STORES=' in line and 'other' in line)
+
+        monkeypatch.setenv('DISCORD_TOKEN', 'token')
+        monkeypatch.setenv('KS_BOT_GIVEAWAY_STORES', line.split('=', 1)[1])
+
+        assert set(Settings.from_env().giveaway_stores) == set(Store)
 
 
 class TestDotenv:

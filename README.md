@@ -1,6 +1,6 @@
 # KS Discord Bot
 
-PUBG 전적 기반 **전투력(점수) 측정**과 **유튜브 음악 재생**을 지원하는 디스코드 봇입니다.
+PUBG 전적 기반 **전투력(점수) 측정**, **유튜브 음악 재생**, **무료 배포 게임 알림**을 지원하는 디스코드 봇입니다.
 
 - 커맨드 접두사: `/` (환경 변수로 변경 가능)
 - Python 3.10+ / discord.py 2.x
@@ -12,13 +12,15 @@ PUBG 전적 기반 **전투력(점수) 측정**과 **유튜브 음악 재생**�
 | 코그 | 커맨드 | 설명 |
 | --- | --- | --- |
 | 밸런서 | `/점수 [플레이어명 \| @멘션]` (`실력`, `스탯점수`, `score`) | 최근 매치를 집계해 전투력 점수를 계산합니다. |
+| 무료배포 | (자동 알림) / `/무료게임` (`무료배포`, `무료`, `freegames`) | 무료로 풀린 게임을 찾아 채널에 알리고, 진행 중인 목록을 보여줍니다. |
 | 음악 | `/재생 <링크\|검색어>` (`play`) | 유튜브 음악을 음성 채널에서 재생합니다. |
 | 음악 | `/반복`, `/랜덤재생`, `/스킵`, `/정지`, `/일시정지`, `/계속재생`, `/볼륨 <0-100>`, `/대기리스트`, `/강제연결해제` | 재생 제어. |
 | 게임 | `/주사위`, `/뽑기`, `/가위바위보 <가위\|바위\|보>`, `/전적` | 간단한 미니 게임. |
 | 메시지 | `/숫자`, `/임베드`, `/삭제`, `/수정`, `/따봉`, `/기다리기` | 메시지 관련 예제. |
 | 유저관리 | `/추방`, `/차단`, `/차단해제`, `/역할부여` | 관리 권한이 필요한 커맨드. |
 
-> `PUBG_TOKEN`이 없으면 밸런서 코그는 자동으로 비활성화되고, 나머지 기능은 정상 동작합니다.
+> `PUBG_TOKEN`이 없으면 밸런서 코그가, `KS_BOT_GIVEAWAY_CHANNEL_ID`가 없으면 무료 배포 코그가
+> 각각 자동으로 비활성화되고, 나머지 기능은 정상 동작합니다.
 
 ---
 
@@ -173,10 +175,57 @@ uv run python scripts/send_message.py --channel-id 1234567890123456789 --message
 | `KS_BOT_MEMBER_STATUS_INTERVAL_MINUTES` | `30` | 멤버 플레이 상태 확인 주기(분) |
 | `KS_BOT_MAX_MATCH_NUM` | `40` | 점수 계산에 사용할 최근 매치 수 |
 | `KS_BOT_PLAYER_CACHE_TTL_HOURS` | `1` | 플레이어 정보 캐시 유효 시간 |
+| `KS_BOT_GIVEAWAY_CHANNEL_ID` | (없음) | 무료 배포 알림 채널 ID. 없으면 무료 배포 코그 비활성화 |
+| `KS_BOT_GIVEAWAY_INTERVAL_MINUTES` | `30` | 무료 배포 확인 주기(분) |
+| `KS_BOT_GIVEAWAY_STORES` | `steam,epic,gog` | 알릴 스토어 목록. `itch`, `ubisoft`, `amazon`, `origin`, `microsoft`, `other` 추가 가능 |
+| `KS_BOT_GIVEAWAY_MENTION_ROLE_ID` | (없음) | 알림 시 멘션할 역할 ID |
+| `KS_BOT_GIVEAWAY_INCLUDE_UPCOMING` | `true` | 다음 주 예정 배포도 미리 알릴지 |
 
 ---
 
-## 7. 프로젝트 구조
+## 7. 무료 배포 알림은 어떻게 동작하나요
+
+`KS_BOT_GIVEAWAY_CHANNEL_ID`만 채우면 켜집니다. 30분마다 아래 순서로 동작합니다.
+
+```
+수집 → 무료 판정 → 실제 스토어 주소 확인 → 한국어 정보 보강 → 중복 제거 → 발행
+```
+
+**수집처**는 두 곳입니다.
+
+- **Epic 공식 API** — Epic 배포에 대해 가장 정확합니다. 한국어 제목·설명·원화 가격·정확한 기간이 들어 있습니다.
+- **GamerPower** — Steam·GOG·itch 등 나머지 스토어를 넓게 커버합니다.
+
+두 곳 모두 응답이 구조화되어 있어 **별도의 AI 후처리 없이** 필요한 정보가 전부 나옵니다.
+부족한 한국어 설명·장르·평점은 Steam `appdetails`로 채웁니다.
+
+주의해서 처리하는 것들:
+
+- Epic의 무료 게임 API는 **단순 할인 예정(20%, 25% 등)도 함께** 돌려줍니다. 할인율이 0%이고
+  실제 판매가가 0원인 것만 무료로 인정합니다.
+- GamerPower가 주는 링크는 중계 주소라 실제 스토어 주소가 아닙니다. 리다이렉트를 따라가
+  상품을 특정하고, 그 결과를 캐시합니다.
+- **선착순 키 배포**와 **스토어 전체 무료**를 구분해 표시합니다. 전자는 마감 전에도 끝날 수 있습니다.
+- 스토어 무료라고 주장하는 항목은 Steam 가격으로 한 번 더 검증합니다.
+- 봇을 **처음 켠 주기**에는 이미 진행 중이던 배포를 발행하지 않고 기록만 남깁니다.
+  (채널이 과거 배포로 도배되는 것을 막습니다.)
+
+발행할 때는 건마다 메시지를 나누지 않고 **`지금 받을 수 있는 것`과 `곧 풀리는 것`으로 묶어**
+최대 2개의 메시지로 보냅니다. 묶인 카드는 큰 이미지 대신 썸네일을 써서 컴팩트하게 표시되고,
+각 게임으로 가는 링크 버튼이 카드 순서대로 붙습니다.
+
+채널을 정하기 전에 결과를 미리 보려면:
+
+```bash
+uv run python scripts/preview_giveaways.py --dry-run              # 터미널에 출력만
+uv run python scripts/preview_giveaways.py --channel-id <채널ID>  # 실제로 발행해보기
+```
+
+(임시 DB를 쓰므로 실제 봇의 발행 이력에는 영향을 주지 않습니다.)
+
+---
+
+## 8. 프로젝트 구조
 
 ```
 ks_bot/
@@ -188,16 +237,20 @@ ks_bot/
 ├── common/             # 도메인 공통 계층 (디스코드 비의존)
 │   ├── models.py       #   Player / Match / PlayerMatchStats / Stats + API 파싱
 │   ├── enums.py        #   GameMode / MatchType / Tier
+│   ├── giveaway.py     #   Store / ClaimKind / Giveaway + 제목·설명 정리
 │   ├── errors.py       #   KSBotError 예외 계층
 │   └── timeutil.py     #   타임존 유틸
 ├── core/               # 인프라/서비스 계층
-│   ├── http_client.py  #   ApiClient: 세션 재사용, 재시도, 레이트 리밋
-│   ├── repository.py   #   PlayerRepository: SQLite 영속성 + 스키마 마이그레이션
+│   ├── http_client.py  #   ApiClient: 세션 재사용, 재시도, 레이트 리밋, 리다이렉트 해석
+│   ├── sqlite.py       #   SqliteRepository: 연결 관리 + 스키마 마이그레이션 공통 기반
+│   ├── repository.py   #   PlayerRepository: 플레이어/매치 전적 영속성
 │   ├── pubg.py         #   PubgBalancer: API + 캐시 조합 서비스
 │   ├── scoring.py      #   점수 계산 (순수 함수)
+│   ├── giveaway.py     #   GiveawayService: 무료 배포 수집·정규화·보강
+│   ├── giveaway_repository.py  #   발행 이력 + 중계 링크 캐시
 │   └── youtube.py      #   유튜브 검색/메타데이터
 └── cogs/               # 디스코드 커맨드 (모듈 추가 시 자동 로드)
-    ├── balancer.py  game.py  msg.py  music.py  user.py
+    ├── balancer.py  game.py  giveaway.py  msg.py  music.py  user.py
 ```
 
 **계층 규칙**: `cogs` → `core` → `common` 방향으로만 의존합니다.
@@ -205,7 +258,7 @@ ks_bot/
 
 ---
 
-## 8. 개발
+## 9. 개발
 
 ```bash
 uv run pytest                       # 기본: 외부 네트워크를 타지 않는 테스트만 실행
