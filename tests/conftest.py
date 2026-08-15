@@ -1,74 +1,64 @@
+"""공통 픽스처.
+
+기본적으로 모든 테스트는 외부 네트워크 없이 동작한다.
+실제 PUBG API를 호출하는 테스트는 `network` 마커를 달고, 토큰이 없으면 자동으로 건너뛴다.
+"""
+
+from __future__ import annotations
+
+import os
+from collections.abc import AsyncIterator
+from pathlib import Path
+
 import pytest
-import re
-from functools import wraps
 
-from ks_bot.core.db_handler import SQLiteDBHandler
-from ks_bot.core.request_handler import APIRequestHandler, HttpMethod
-from ks_bot.core.pubg_balancer import PUBG_Balancer
-from ks_bot.utils import *
-
-TEST_DB = 'test_history.db'
-PARAMETRIZE_INDICATOR = 'input, expected'
+from ks_bot.config import Settings
+from ks_bot.core.pubg import PubgBalancer
+from ks_bot.core.repository import PlayerRepository
 
 
-@pytest.fixture
-async def db_handler():
-    handler = SQLiteDBHandler(TEST_DB)
-    await handler.init()
-    yield handler
-    await handler.close()
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """PUBG 토큰이 없으면 네트워크 테스트를 건너뛴다."""
+    if os.environ.get('PUBG_TOKEN'):
+        return
+
+    skip_network = pytest.mark.skip(reason='PUBG_TOKEN 환경 변수가 없어 네트워크 테스트를 건너뜁니다.')
+    for item in items:
+        if 'network' in item.keywords:
+            item.add_marker(skip_network)
 
 
 @pytest.fixture
-async def api_request_handler():
-    api_key = get_pubg_token()
-    platform = 'steam'
-    base_url = f'https://api.pubg.com/shards/{platform}'
-    api_request_handler = APIRequestHandler(api_key=api_key, base_url=base_url)
-    return api_request_handler
+def db_path(tmp_path: Path) -> Path:
+    return tmp_path / 'test_history.db'
 
 
 @pytest.fixture
-async def pubg_balancer():
-    api_key = get_pubg_token()
-    platform = 'steam'
-    async with PUBG_Balancer(api_key=api_key, platform=platform, db_init=True) as pubg_balancer:
-        yield pubg_balancer
+async def repository(db_path: Path) -> AsyncIterator[PlayerRepository]:
+    repo = PlayerRepository(db_path)
+    await repo.connect(reset=True)
+    try:
+        yield repo
+    finally:
+        await repo.close()
 
 
-def validate_dict_structure(schema: dict, target_dict: dict) -> bool:
-    for key, value_type in schema.items():
-        if key not in target_dict:
-            return False
-
-        actual_value = target_dict[key]
-        if isinstance(value_type, dict):
-            if not isinstance(actual_value, dict) or not validate_dict_structure(value_type, actual_value):
-                return False
-        elif isinstance(value_type, list):
-            if not isinstance(actual_value, list) or not all(validate_dict_structure(value_type[0], item) for item in actual_value):
-                return False
-        else:
-            if not isinstance(actual_value, value_type):
-                return False
-    return True
+@pytest.fixture
+def settings(tmp_path: Path) -> Settings:
+    return Settings(
+        discord_token='test-discord-token',
+        pubg_token='test-pubg-token',
+        db_path=tmp_path / 'history.db',
+        game_result_dir=tmp_path / 'game_result',
+    )
 
 
-def async_exception_test():
-    def decorator(func):
-        @wraps(func)
-        async def wrapper(*args, **kwargs):
-            expected = kwargs['expected']
-            if not isinstance(expected, Exception):
-                await func(*args, **kwargs)
-            else:
-                with pytest.raises(type(expected)) as exc_info:
-                    await func(*args, **kwargs)
-
-                # expected_message = str(expected)
-                # actual_message = str(exc_info.value)
-                # assert re.search(expected_message, actual_message), f"Expected message: {expected_message}, Actual message: {actual_message}"
-
-        return wrapper
-
-    return decorator
+@pytest.fixture
+async def balancer(db_path: Path) -> AsyncIterator[PubgBalancer]:
+    """네트워크를 타지 않는 밸런서. API 호출은 테스트에서 monkeypatch한다."""
+    service = PubgBalancer(api_key='test-token', platform='steam', db_path=db_path, db_reset=True, max_match_num=4)
+    await service.connect()
+    try:
+        yield service
+    finally:
+        await service.aclose()
