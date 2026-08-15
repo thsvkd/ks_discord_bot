@@ -9,7 +9,8 @@ from __future__ import annotations
 from ks_bot.bot import KSBot, build_intents
 from ks_bot.config import Settings
 
-EXPECTED_COMMANDS = {'점수', '재생', '주사위', '가위바위보', '숫자', '추방', '볼륨', '대기리스트'}
+#: 커맨드는 카테고리 그룹 아래로 묶여 있으므로 전체 경로로 확인한다.
+EXPECTED_COMMANDS = {'점수', '음악 재생', '게임 주사위', '게임 가위바위보', '메시지 숫자', '유저 추방', '음악 볼륨', '음악 대기리스트'}
 
 
 class TestIntents:
@@ -35,23 +36,25 @@ class TestExtensionLoading:
     async def test_commands_are_registered(self, bot: KSBot):
         await bot.load_all_extensions()
 
-        names = {command.name for command in bot.commands}
+        names = {command.qualified_name for command in bot.walk_commands()}
         assert names >= EXPECTED_COMMANDS
 
     async def test_aliases_resolve(self, bot: KSBot):
         await bot.load_all_extensions()
 
         assert bot.get_command('score') is bot.get_command('점수')
-        assert bot.get_command('play') is bot.get_command('재생')
+        assert bot.get_command('음악 play') is bot.get_command('음악 재생')
 
     async def test_no_duplicate_command_names(self, bot: KSBot):
+        """이름 충돌은 같은 부모 아래에서만 문제가 된다(`/음악 정지`와 `/게임 정지`는 공존 가능)."""
         await bot.load_all_extensions()
 
-        seen: set[str] = set()
-        for command in bot.commands:
+        seen: dict[str, set[str]] = {}
+        for command in bot.walk_commands():
+            scope = seen.setdefault(command.full_parent_name, set())
             for name in (command.name, *command.aliases):
-                assert name not in seen, f'커맨드 이름이 중복됩니다: {name}'
-                seen.add(name)
+                assert name not in scope, f'커맨드 이름이 중복됩니다: {command.full_parent_name} {name}'.strip()
+                scope.add(name)
 
     async def test_balancer_is_skipped_without_pubg_token(self, settings: Settings):
         instance = KSBot(Settings(discord_token='t', pubg_token='', db_path=settings.db_path, game_result_dir=settings.game_result_dir))

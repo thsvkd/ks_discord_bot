@@ -36,7 +36,20 @@ class Msg(commands.Cog, name='메시지'):
         except discord.HTTPException:
             logger.warning('리액션을 제거하지 못했습니다. message_id=%s', payload.message_id)
 
-    @commands.hybrid_command(name='숫자', help='입력한 숫자를 보여줍니다', description='입력한 숫자를 보여줍니다', aliases=['number'])
+    @commands.hybrid_group(
+        name='메시지',
+        help='메시지 전송/수정/삭제 관련 커맨드입니다.',
+        description='메시지 전송/수정/삭제 관련 커맨드입니다.',
+        invoke_without_command=True,
+    )
+    async def msg_group(self, ctx: commands.Context) -> None:
+        """`/메시지`만 입력했을 때 하위 커맨드를 안내한다.
+
+        슬래시로는 그룹 자체를 호출할 수 없으므로(디스코드 제약) 이 콜백은 접두사 전용이다.
+        """
+        await ctx.send_help(ctx.command)
+
+    @msg_group.command(name='숫자', help='입력한 숫자를 보여줍니다', description='입력한 숫자를 보여줍니다', aliases=['number'])
     async def num_echo(self, ctx: commands.Context, user: int) -> None:
         await ctx.send(f'입력한 숫자는 {user}입니다.')
 
@@ -45,7 +58,7 @@ class Msg(commands.Cog, name='메시지'):
         if isinstance(error, (commands.BadArgument, commands.MissingRequiredArgument)):
             await ctx.send('정수를 입력 해주세요')
 
-    @commands.hybrid_command(name='임베드', help='임베드를 보여줍니다', description='임베드를 보여줍니다', aliases=['embed'])
+    @msg_group.command(name='임베드', help='임베드를 보여줍니다', description='임베드를 보여줍니다', aliases=['embed'])
     async def embed(self, ctx: commands.Context) -> None:
         embed = discord.Embed(title='Embed title', description='Embed description', color=0x36CCF2)
         embed.set_thumbnail(url=SAMPLE_IMAGE_URL)
@@ -57,24 +70,24 @@ class Msg(commands.Cog, name='메시지'):
 
         await ctx.send(embed=embed)
 
-    @commands.hybrid_command(name='삭제', help='메시지를 삭제합니다', description='메시지를 삭제합니다', aliases=['delete'])
+    @msg_group.command(name='삭제', help='메시지를 삭제합니다', description='메시지를 삭제합니다', aliases=['delete'])
     async def delete_msg(self, ctx: commands.Context) -> None:
         msg = await ctx.send('3초 뒤에 삭제 됩니다!')
         await msg.delete(delay=3)
 
-    @commands.hybrid_command(name='수정', help='메시지를 수정합니다', description='메시지를 수정합니다', aliases=['edit'])
+    @msg_group.command(name='수정', help='메시지를 수정합니다', description='메시지를 수정합니다', aliases=['edit'])
     async def edit_msg(self, ctx: commands.Context) -> None:
         msg = await ctx.send('곧 수정 됩니다!')
         await msg.edit(content='수정 되었습니다!')
 
-    @commands.hybrid_command(name='따봉', help='메시지에 반응을 추가합니다', description='메시지에 반응을 추가합니다', aliases=['reaction'])
+    @msg_group.command(name='따봉', help='메시지에 반응을 추가합니다', description='메시지에 반응을 추가합니다', aliases=['reaction'])
     async def reaction(self, ctx: commands.Context) -> None:
         # 슬래시로 부르면 원본 메시지가 없다(`ctx.message`가 None).
         # 그때는 새 메시지를 보내고 거기에 반응을 단다.
         target = ctx.message or await ctx.send('👍')
         await target.add_reaction('👍')
 
-    @commands.hybrid_command(name='기다리기', help='유저의 메시지를 기다립니다', description='유저의 메시지를 기다립니다', aliases=['wait'])
+    @msg_group.command(name='기다리기', help='유저의 메시지를 기다립니다', description='유저의 메시지를 기다립니다', aliases=['wait'])
     async def wait(self, ctx: commands.Context) -> None:
         timeout = 5
         await ctx.send(f'{timeout}초간 기다립니다!')
