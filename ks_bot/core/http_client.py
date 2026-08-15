@@ -46,6 +46,7 @@ class ApiClient:
         max_retries: int = 3,
         timeout: float = 10.0,
         rate_limit_per_minute: int = 10,
+        default_headers: dict[str, str] | None = None,
     ):
         self.api_key = api_key
         self.base_url = base_url.rstrip('/')
@@ -53,13 +54,27 @@ class ApiClient:
         self.rate_limit_per_minute = rate_limit_per_minute
         self.remaining_requests = rate_limit_per_minute
         self.rate_limit_reset_timestamp = time.time()
+        self._default_headers = default_headers
         self._retry_options = ExponentialRetry(attempts=max_retries)
         self._session: aiohttp.ClientSession | None = None
         self._lock = asyncio.Lock()
 
     @property
     def default_headers(self) -> dict[str, str]:
+        """인증 헤더. 생성자에서 넘기면 그 값을 그대로 쓴다(인증이 없는 공개 API용)."""
+        if self._default_headers is not None:
+            return dict(self._default_headers)
         return {'Authorization': f'Bearer {self.api_key}', 'Accept': 'application/vnd.api+json'}
+
+    def build_url(self, endpoint: str) -> str:
+        """엔드포인트를 절대 URL로 만든다.
+
+        이미 절대 URL이면 그대로 쓴다. 여러 호스트를 오가는 호출자가
+        세션을 하나만 유지할 수 있게 하기 위함이다.
+        """
+        if endpoint.startswith(('http://', 'https://')):
+            return endpoint
+        return f'{self.base_url}/{endpoint.lstrip("/")}'
 
     async def __aenter__(self) -> ApiClient:
         await self._ensure_session()
@@ -114,7 +129,7 @@ class ApiClient:
             RateLimitError: 재시도 후에도 레이트 리밋이 풀리지 않은 경우.
             ApiRequestError: 그 외 네트워크/HTTP 오류.
         """
-        url = f'{self.base_url}/{endpoint.lstrip("/")}'
+        url = self.build_url(endpoint)
         headers = header if header is not None else self.default_headers
         session = await self._ensure_session()
         client = RetryClient(client_session=session, retry_options=self._retry_options, raise_for_status=False)
@@ -143,3 +158,30 @@ class ApiClient:
                 raise ApiRequestError(f'API 요청 중 HTTP 오류가 발생했습니다: {e}') from e
 
         raise RateLimitError(f'레이트 리밋이 해제되지 않아 요청을 포기했습니다: {endpoint}')
+
+    async def resolve_final_url(self, endpoint: str, header: dict | None = None) -> str:
+        """리다이렉트를 따라가 최종 URL을 반환한다.
+
+        중계 링크(예: 배포 사이트의 `/open/...`)에서 실제 스토어 주소를 얻을 때 쓴다.
+        본문은 필요 없지만, 서버가 HEAD를 허용하지 않는 경우가 많아 GET으로 요청한다.
+
+        목적지가 4xx를 주더라도 URL 자체는 유효하다. 스토어가 봇으로 의심해 403을 돌려주는
+        일이 흔한데(Epic 상품 페이지가 그렇다), 그때 주소를 버리면 상품을 식별할 수 없게 된다.
+        따라서 상태 코드로는 실패시키지 않고, 주소를 얻지 못한 경우에만 예외를 던진다.
+
+        Raises:
+            ApiRequestError: 네트워크 오류로 응답 자체를 받지 못한 경우.
+        """
+        url = self.build_url(endpoint)
+        headers = header if header is not None else self.default_headers
+        session = await self._ensure_session()
+
+        try:
+            async with session.get(url, headers=headers, allow_redirects=True) as response:
+                if response.status >= 400:
+                    logger.debug('최종 URL의 응답이 %s입니다. 주소는 그대로 사용합니다: %s', response.status, response.url)
+                return str(response.url)
+        except asyncio.TimeoutError as e:
+            raise ApiRequestError(f'최종 URL 확인 시간 초과: {url}') from e
+        except aiohttp.ClientError as e:
+            raise ApiRequestError(f'최종 URL 확인 중 HTTP 오류가 발생했습니다: {e}') from e

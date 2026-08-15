@@ -105,6 +105,59 @@ class TestRateLimit:
                 await client.request('seasons')
 
 
+class TestAbsoluteUrlAndHeaders:
+    async def test_absolute_endpoint_bypasses_base_url(self):
+        async def handler(request: web.Request) -> web.Response:
+            return web.json_response({'path': request.path})
+
+        async with make_client(handler) as client:
+            absolute = f'{client.base_url}/somewhere'
+            assert await client.request(absolute) == {'path': '/somewhere'}
+
+    async def test_custom_default_headers_replace_bearer(self):
+        captured: dict[str, str] = {}
+
+        async def handler(request: web.Request) -> web.Response:
+            captured.update(request.headers)
+            return web.json_response({})
+
+        async with make_client(handler) as client:
+            client._default_headers = {'User-Agent': 'test-agent'}
+            await client.request('public')
+
+        assert captured['User-Agent'] == 'test-agent'
+        assert 'Authorization' not in captured
+
+
+class TestResolveFinalUrl:
+    async def test_follows_redirect(self):
+        async def handler(request: web.Request) -> web.StreamResponse:
+            if request.path == '/open':
+                raise web.HTTPFound('/store/app/214340')
+            return web.json_response({})
+
+        async with make_client(handler) as client:
+            assert (await client.resolve_final_url('open')).endswith('/store/app/214340')
+
+    async def test_destination_error_status_still_yields_the_url(self):
+        """스토어가 봇으로 의심해 403을 줘도, 주소 자체는 상품 식별에 쓸 수 있다."""
+
+        async def handler(request: web.Request) -> web.StreamResponse:
+            if request.path == '/open':
+                raise web.HTTPFound('/p/caravan-sandwitch')
+            return web.json_response({'error': 'forbidden'}, status=403)
+
+        async with make_client(handler) as client:
+            assert (await client.resolve_final_url('open')).endswith('/p/caravan-sandwitch')
+
+    async def test_without_redirect_returns_the_same_url(self):
+        async def handler(request: web.Request) -> web.Response:
+            return web.json_response({})
+
+        async with make_client(handler) as client:
+            assert (await client.resolve_final_url('plain')).endswith('/plain')
+
+
 class TestLifecycle:
     async def test_aclose_is_idempotent(self):
         async def handler(request: web.Request) -> web.Response:

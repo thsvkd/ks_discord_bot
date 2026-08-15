@@ -53,8 +53,11 @@ def parse_utc_to_datetime(value: str | datetime, tz: Timezone = Timezone.KST) ->
         try:
             parsed = datetime.strptime(value, '%Y-%m-%dT%H:%M:%SZ')
         except ValueError:
+            # 파이썬 3.10의 fromisoformat은 끝에 붙은 `Z`를 이해하지 못한다.
+            # (`2026-08-13T15:00:00.000Z` 같은 밀리초 포함 UTC 표기가 여기로 온다.)
+            normalized = f'{value[:-1]}+00:00' if value.endswith('Z') else value
             try:
-                parsed = datetime.fromisoformat(value)
+                parsed = datetime.fromisoformat(normalized)
             except ValueError as e:
                 raise ValueError(f'파싱할 수 없는 datetime 문자열입니다: {value!r}') from e
 
