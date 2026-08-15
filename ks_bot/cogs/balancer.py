@@ -36,22 +36,22 @@ class ScoreTier:
     image_url: str
 
 
-# 높은 점수부터 검사한다.
+# 높은 점수부터 검사한다. 점수는 [0, 100] 스케일이다(docs/scoring-design.md §10.3).
 SCORE_TIERS: tuple[ScoreTier, ...] = (
     ScoreTier(
-        15.0,
+        70.0,
         '전투력 측정 완료! 스카우터가... 터져버렸어?!?',
         'https://lh3.googleusercontent.com/u/0/drive-viewer/'
         'AEYmBYQ3qw-Prf9G2V758nIn1Xzx3YLe5RTCI-ibi4Q7rtYHqC8283wYpqV0oS8PkNsyjwJGJWUOjOcf_ou1T9YnQ2PMyroC_w=w2560-h1271',
     ),
     ScoreTier(
-        10.0,
+        50.0,
         '전투력 측정 완료! 이, 이녀석 조심해야겠어...!',
         'https://lh3.googleusercontent.com/u/0/drive-viewer/'
         'AEYmBYRkUJv1XYMkyn4a-NPazFnnNQ09O7jTLBppgpjTxlpkJ1smPqIa2sJlBgurJP042ax5HfwTMnziXCdnHRbEt74WZS8low=w2560-h1271',
     ),
     ScoreTier(
-        5.0,
+        30.0,
         '전투력 측정 완료! 좀 치는 녀석이군...',
         'https://lh3.googleusercontent.com/u/0/drive-viewer/'
         'AEYmBYR1jHdQyQMvviH3lMQbCO8Q3qgOaFYBFGZ9qlOEOy7ikThM56R2L_PIyT2jkEpzYac0TZOPT9L09Fijb9VqIUOiYd0syw=w2560-h1271',
@@ -102,7 +102,7 @@ def build_score_embed(player_name: str, score: float) -> discord.Embed:
     tier = next(tier for tier in SCORE_TIERS if score >= tier.min_score)
     embed = discord.Embed(
         title=tier.title,
-        description=f'**`{player_name}`**의 스탯 점수는 **`{score:.04f}`** 입니다.',
+        description=f'**`{player_name}`**의 스탯 점수는 **`{score:.1f}`** 입니다.',
         color=EMBED_COLOR,
     )
     embed.set_image(url=tier.image_url)

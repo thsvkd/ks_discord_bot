@@ -90,18 +90,18 @@ class TestScoreEmbed:
     @pytest.mark.parametrize(
         'score, expected_keyword',
         [
-            (1.0, '애송이'),
-            (7.5, '좀 치는'),
-            (12.0, '조심'),
-            (20.0, '스카우터'),
-            (-3.0, '애송이'),
+            (10.0, '애송이'),
+            (40.0, '좀 치는'),
+            (60.0, '조심'),
+            (80.0, '스카우터'),
+            (0.0, '애송이'),
         ],
     )
     def test_tier_selection(self, score: float, expected_keyword: str):
         embed = build_score_embed('SonPANG', score)
         assert expected_keyword in embed.title
         assert 'SonPANG' in embed.description
-        assert f'{score:.04f}' in embed.description
+        assert f'{score:.1f}' in embed.description
 
     def test_tiers_are_sorted_descending(self):
         thresholds = [tier.min_score for tier in SCORE_TIERS]

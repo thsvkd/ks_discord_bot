@@ -13,6 +13,8 @@ from types import TracebackType
 
 from ks_bot.common.enums import SQUAD_GAME_MODES, GameMode, MatchType
 from ks_bot.common.errors import (
+    ApiRequestError,
+    BalancerError,
     NotEnoughMatchesError,
     PlayerMatchStatsNotFoundError,
     PlayerNotFoundError,
@@ -53,6 +55,7 @@ class PubgBalancer:
         self._db_reset = db_reset
         self._api = ApiClient(api_key=api_key, base_url=f'https://api.pubg.com/shards/{platform}')
         self._repo = PlayerRepository(db_path)
+        self._cached_season_id: str | None = None
 
     @property
     def repository(self) -> PlayerRepository:
@@ -240,6 +243,41 @@ class PubgBalancer:
         if len(matches) < self.required_match_num:
             raise NotEnoughMatchesError(match_num=len(matches), required_match_num=self.required_match_num)
 
-        stats = aggregate_stats(matches)
+        ranked_stats = await self._fetch_ranked_stats_for_blend(player_name, matches)
+        stats = aggregate_stats(matches, ranked=ranked_stats)
         stats.type = MatchType.NORMAL
         return stats
+
+    async def _get_current_season_id(self) -> str:
+        """현재 시즌 ID를 얻는다. 시즌은 몇 달에 한 번 바뀌므로 프로세스 수명 동안 메모리에 캐시한다.
+
+        빈 ID는 캐시하지 않는다. 한 번 캐시되면 프로세스가 죽을 때까지
+        `players/{id}/seasons//ranked` 라는 잘못된 URL로 계속 요청하게 된다.
+        """
+        if self._cached_season_id is not None:
+            return self._cached_season_id
+
+        season = await self.fetch_current_season()
+        season_id = season.get('id', '')
+        if not season_id:
+            raise ResourceNotFoundError('현재 시즌 응답에 ID가 없습니다.')
+
+        self._cached_season_id = season_id
+        return season_id
+
+    async def _fetch_ranked_stats_for_blend(self, player_name: str, matches: list[PlayerMatchStats]) -> Stats | None:
+        """랭크 매치가 하나라도 있을 때만 시즌 티어를 조회한다.
+
+        티어 조회는 점수 계산에 필수가 아니므로, 실패(레이트 리밋/미랭크/조회 실패)해도
+        `None`을 반환해 티어 결합 없이 점수를 계산하도록 한다.
+        `fetch_ranked_stats`가 내부에서 부르는 `get_player`는 `PlayerNotFoundError`를 던질 수 있으므로,
+        도메인 예외는 `BalancerError` 계열 전체를 잡는다(§7.2 — 티어 때문에 점수 조회가 실패해서는 안 된다).
+        """
+        if not any(match.match_type == MatchType.RANKED for match in matches):
+            return None
+        try:
+            season_id = await self._get_current_season_id()
+            return await self.fetch_ranked_stats(player_name, season_id)
+        except (ApiRequestError, BalancerError) as e:
+            logger.info('시즌 티어 조회에 실패해 티어 결합 없이 점수를 계산합니다. player=%s, error=%s', player_name, e)
+            return None
