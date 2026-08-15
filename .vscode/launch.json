@@ -1,7 +1,5 @@
 {
-  // IntelliSense를 사용하여 가능한 특성에 대해 알아보세요.
-  // 기존 특성에 대한 설명을 보려면 가리킵니다.
-  // 자세한 내용을 보려면 https://go.microsoft.com/fwlink/?linkid=830387을(를) 방문하세요.
+  // https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "configurations": [
     {
@@ -13,74 +11,50 @@
       "justMyCode": true
     },
     {
-      "name": "run main.py",
+      "name": "봇 실행 (python -m ks_bot)",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/main.py",
+      "module": "ks_bot",
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "justMyCode": true
     },
     {
-      "name": "run pubg_api.py",
+      "name": "전체 테스트",
       "type": "debugpy",
       "request": "launch",
-      "program": "${workspaceFolder}/ks_bot/core/pubg_api.py",
+      "module": "pytest",
+      "args": ["-v"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "현재 테스트 파일",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["-v", "${file}"],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "디스코드 메시지 전송 점검",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/send_message.py",
+      "args": ["--channel-id", "${input:channelId}", "--message", "KS Bot 연결 테스트 ✅"],
       "cwd": "${workspaceFolder}",
       "console": "integratedTerminal",
       "justMyCode": true
-    },
+    }
+  ],
+  "inputs": [
     {
-      "name": "run test_db_handler.py",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/tests/debug.py",
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/tests",
-      "args": [
-        "-i",
-        "core/test_db_handler.py"
-      ],
-      "justMyCode": true
-    },
-    {
-      "name": "run test_get_youtube.py",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/tests/debug.py",
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/tests",
-      "args": [
-        "-i",
-        "core/test_get_youtube.py"
-      ],
-      "justMyCode": true
-    },
-    {
-      "name": "run test_pubg_balancer.py",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/tests/debug.py",
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/tests",
-      "args": [
-        "-i",
-        "core/test_pubg_balancer.py"
-      ],
-      "justMyCode": true
-    },
-    {
-      "name": "run test_request_handler.py",
-      "type": "debugpy",
-      "request": "launch",
-      "program": "${workspaceFolder}/tests/debug.py",
-      "console": "integratedTerminal",
-      "cwd": "${workspaceFolder}/tests",
-      "args": [
-        "-i",
-        "core/test_request_handler.py"
-      ],
-      "justMyCode": true
-    },
+      "id": "channelId",
+      "type": "promptString",
+      "description": "메시지를 보낼 디스코드 채널 ID"
+    }
   ]
 }

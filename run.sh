@@ -1,3 +1,6 @@
 #!/bin/bash
+set -euo pipefail
 
-python main.py
+cd "$(dirname "$0")"
+
+python -m ks_bot
