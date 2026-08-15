@@ -196,3 +196,37 @@ class TestGetStats:
 
         assert stats.tier == Tier.UNDEFINED
         assert stats.score != 0.0
+
+    async def test_player_lookup_failure_during_tier_blend_falls_back(self, balancer: PubgBalancer, monkeypatch, player_name: str):
+        # `fetch_ranked_stats`는 내부에서 `get_player`를 다시 부르므로 PlayerNotFoundError가 나올 수 있다.
+        # 이것이 밖으로 새면 티어 때문에 `/점수` 전체가 실패한다(§7.2 위반).
+        api = build_api(player_name, win_places=[2, 5, 8, 11])
+        for match_id in MATCH_IDS[:4]:
+            api.responses[f'matches/{match_id}']['data']['attributes']['matchType'] = 'competitive'
+        api.responses['seasons'] = make_season_payload('season-x')
+        monkeypatch.setattr(balancer, '_request', api)
+
+        async def raise_player_not_found(*args, **kwargs):
+            raise PlayerNotFoundError(player_name=player_name)
+
+        monkeypatch.setattr(balancer, 'fetch_ranked_stats', raise_player_not_found)
+
+        stats = await balancer.get_stats(player_name)
+
+        assert stats.tier == Tier.UNDEFINED
+        assert stats.score != 0.0
+
+    async def test_empty_season_id_is_not_cached(self, balancer: PubgBalancer, monkeypatch, player_name: str):
+        # 빈 시즌 ID를 캐시하면 프로세스 수명 내내 `seasons//ranked`로 요청하게 된다.
+        api = build_api(player_name, win_places=[2, 5, 8, 11])
+        for match_id in MATCH_IDS[:4]:
+            api.responses[f'matches/{match_id}']['data']['attributes']['matchType'] = 'competitive'
+        api.responses['seasons'] = make_season_payload('')
+        monkeypatch.setattr(balancer, '_request', api)
+
+        stats = await balancer.get_stats(player_name)
+
+        assert stats.tier == Tier.UNDEFINED
+        assert stats.score != 0.0
+        assert balancer._cached_season_id is None
+        assert not any('/ranked' in call for call in api.calls)

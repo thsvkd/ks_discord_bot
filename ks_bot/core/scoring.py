@@ -95,7 +95,13 @@ def mode_family(game_mode: GameMode) -> str:
 
 
 def sat(x: float) -> float:
-    """포화 함수. 파라미터 없음. x=0 -> 0, x=1 -> 0.5, x -> ∞ -> 1."""
+    """포화 함수. 파라미터 없음. x=0 -> 0, x=1 -> 0.5, x -> ∞ -> 1.
+
+    음수는 0으로 본다. 파손 데이터로 딜량이 음수가 되면 `x = -1`에서 0으로 나누고,
+    그보다 더 낮은 값에서는 오히려 점수가 올라간다(딜량 -800이 64점).
+    """
+    if x <= 0:
+        return 0.0
     return x / (1 + x)
 
 
@@ -208,7 +214,8 @@ def aggregate_stats(matches: Sequence[PlayerMatchStats], *, ranked: Stats | None
     assists = sum(match.assists for match in matches)
     headshot_kills = sum(match.headshot_kills for match in matches)
     deaths = sum(1 for match in matches if _is_dead(match))
-    top10_count = sum(1 for match in matches if match.win_place <= _top_percentile_threshold(mode_family(match.game_mode)))
+    # `win_place`가 0인 파손 데이터를 1등으로 세면 안 된다.
+    top10_count = sum(1 for match in matches if 1 <= match.win_place <= _top_percentile_threshold(mode_family(match.game_mode)))
 
     score = calculate_stats_score(matches)
     score += calculate_headshot_adjustment(kills, headshot_kills)
