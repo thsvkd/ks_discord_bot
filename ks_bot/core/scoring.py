@@ -35,7 +35,9 @@ LOBBY_SIZE = 100  # 명. PUBG 일반 매치 정원. kill_place 백분위의 분�
 MODE_TEAM_COUNT = {'solo': 100, 'duo': 50, 'squad': 25}  # 팀. 정원 100을 팀 인원으로 나눈 값. win_place 백분위의 분모.
 HP_PER_ENEMY = 100.0  # HP. 적 1명분 체력. 딜량을 "적 몇 명분"으로 읽는 단위.
 
-# ---------- 의미가 정의된 튜닝 파라미터 (재산출: scripts/calibrate_scoring.py) ----------
+# ---------- 의미가 정의된 튜닝 파라미터 ----------
+# DAMAGE_REFERENCE / REFERENCE_MINUTES / PRIOR_SCORE / HEADSHOT_BASE 는 유저 분포에 의존하는 잠정값이다.
+# 캐시 DB에서 재산출하는 보정 스크립트(설계 §11의 scripts/calibrate_scoring.py)는 아직 없다.
 
 DAMAGE_REFERENCE = {'solo': 300.0, 'duo': 350.0, 'squad': 400.0}  # 그 모드 딜량 분포의 75백분위. 이 딜량에서 딜 항이 정확히 0.5.
 REFERENCE_MINUTES = 20.0  # 분. "후반부까지 생존한 매치"의 대략적 길이. DPM_REFERENCE의 분모.

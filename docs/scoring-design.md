@@ -456,6 +456,13 @@ def aggregate_stats(matches: Sequence[PlayerMatchStats], *, ranked: Stats | None
 
 ## 11. 상수 재보정 절차
 
+> **현재 상태: 미구현.** 아래에 적힌 `scripts/calibrate_scoring.py` 는 **아직 저장소에 없다.**
+> 따라서 `DAMAGE_REFERENCE`(300/350/400), `REFERENCE_MINUTES`(20), `HEADSHOT_BASE`(0.20),
+> `PRIOR_SCORE`(40) 는 **단위와 의미가 주석으로 붙어 있을 뿐, 실측으로 뒷받침되지 않은 잠정 리터럴**이다.
+> 이 절은 앞으로 만들 것에 대한 명세이지 완료된 산출물의 설명이 아니다. 특히 `HEADSHOT_BASE` 가
+> 실제 분포보다 높으면 대다수 유저가 상시 감점을 받게 되므로(§13의 헤드샷 전제 참고), 이 스크립트가
+> 생기기 전까지 위 네 상수를 근거 있는 값으로 취급하지 말 것.
+
 `DMG_REF`, `PRIOR_SCORE`, `HEADSHOT_BASE` 는 "우리 서버 유저 분포"에 의존한다. 잠정값은 위 표대로 두되, **로컬 캐시 DB에서 재산출하는 스크립트**를 함께 만든다. 이것이 "매직 넘버 금지"의 실행 장치다.
 
 `scripts/calibrate_scoring.py` (신규, 네트워크 접근 없음):
@@ -687,7 +694,7 @@ final       = 0.5 * 41.0 + 0.5 * 70.0 = 55.5
 4. `ks_bot/core/pubg.py::get_stats()` — 랭크 매치가 있을 때만 시즌+티어 조회, 실패 시 폴백.
 5. `ks_bot/cogs/balancer.py` — `SCORE_TIERS` 임계값과 표시 포맷.
 6. `tests/` — §12.7의 기존 테스트 수정, §12.8 팩토리, 신규 테스트.
-7. `scripts/calibrate_scoring.py` (§11).
+7. `scripts/calibrate_scoring.py` (§11). — **미완료.** 후속 작업으로 남아 있다.
 8. `README.md` — `/점수` 설명에 새 스케일(0~100) 한 줄 반영.
 
 ### 14.2 주의사항
