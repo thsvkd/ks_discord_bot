@@ -74,6 +74,59 @@ def make_match_stats(
     return stats
 
 
+# docs/scoring-design.md §13의 검증 시나리오 페르소나. revives/team_kills/headshot_kills/death_type은 전부 고정값.
+_SCORE_PERSONAS: dict[str, dict[str, Any]] = {
+    'rookie': {'win_place': 19, 'damage_dealt': 80.0, 'kills': 0, 'DBNOs': 0, 'assists': 0, 'time_survived': 500, 'kill_place': 75},
+    'average': {'win_place': 11, 'damage_dealt': 230.0, 'kills': 2, 'DBNOs': 2, 'assists': 1, 'time_survived': 1100, 'kill_place': 35},
+    'skilled': {'win_place': 4, 'damage_dealt': 450.0, 'kills': 4, 'DBNOs': 5, 'assists': 2, 'time_survived': 1500, 'kill_place': 8},
+    'pro': {'win_place': 2, 'damage_dealt': 700.0, 'kills': 7, 'DBNOs': 8, 'assists': 2, 'time_survived': 1700, 'kill_place': 3},
+}
+
+
+def make_match_stats_profile(profile: str, count: int = 10, **overrides: Any) -> list[PlayerMatchStats]:
+    """실력 페르소나(`'rookie'`/`'average'`/`'skilled'`/`'pro'`)의 매치 스탯을 `count`건 복제해 만든다."""
+    fields = {
+        **_SCORE_PERSONAS[profile],
+        'revives': 0,
+        'team_kills': 0,
+        'headshot_kills': 0,
+        'death_type': 'byplayer',
+        **overrides,
+    }
+    return [make_match_stats(match_id=f'{profile}-{i}', **fields) for i in range(count)]
+
+
+def make_season_payload(season_id: str = 'division.bro.official.pc-2018-01') -> dict:
+    """`seasons` 응답 중 현재 시즌 엔트리가 포함된 페이로드를 만든다."""
+    return {'data': [{'type': 'season', 'id': season_id, 'attributes': {'isCurrentSeason': True}}]}
+
+
+def make_ranked_stats_payload(*, tier: str = 'gold', sub_tier: int = 3, rank_point: int = 2500) -> dict:
+    """`players/{id}/seasons/{season}/ranked` 응답 중 squad 통계를 포함한 페이로드를 만든다."""
+    return {
+        'data': {
+            'type': 'rankedplayerstats',
+            'attributes': {
+                'rankedGameModeStats': {
+                    'squad': {
+                        'currentTier': {'tier': tier, 'subTier': sub_tier},
+                        'currentRankPoint': rank_point,
+                        'roundsPlayed': 20,
+                        'avgRank': 10.0,
+                        'top10Ratio': 0.3,
+                        'winRatio': 0.1,
+                        'damageDealt': 200.0,
+                        'kills': 2,
+                        'assists': 1,
+                        'deaths': 15,
+                        'kda': 0.2,
+                    }
+                }
+            },
+        }
+    }
+
+
 def make_match_payload(match_id: str, player_name: str, *, game_mode: str = 'squad', match_type: str = 'official', win_place: int = 5) -> dict:
     """`matches/{id}` 응답과 같은 형태의 페이로드를 만든다."""
     return {

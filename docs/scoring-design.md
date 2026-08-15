@@ -260,9 +260,9 @@ DPM_REF[M] = DMG_REF[M] / REFERENCE_MINUTES   # squad 20 / duo 17.5 / solo 15   
 `GameMode` 는 40개 가까운 값을 갖는다(`enums.py:28-68`). 점수 계산에는 **인원 구성만** 필요하므로 패밀리로 축약한다.
 
 ```python
-_SOLO_MODES  = {SOLO, SOLO_FPP, NORMAL_SOLO, NORMAL_SOLO_FPP}
-_DUO_MODES   = {DUO, DUO_FPP, NORMAL_DUO, NORMAL_DUO_FPP}
-_SQUAD_MODES = {SQUAD, SQUAD_FPP, NORMAL_SQUAD, NORMAL_SQUAD_FPP}   # == 기존 SQUAD_GAME_MODES
+_SOLO_MODES = {SOLO, SOLO_FPP, NORMAL_SOLO, NORMAL_SOLO_FPP}
+_DUO_MODES = {DUO, DUO_FPP, NORMAL_DUO, NORMAL_DUO_FPP}
+_SQUAD_MODES = {SQUAD, SQUAD_FPP, NORMAL_SQUAD, NORMAL_SQUAD_FPP}  # == 기존 SQUAD_GAME_MODES
 ```
 
 - `conquest-*` / `war-*` / `zombie-*` / `esports-*` / `lab-*` / `tdm` 은 규칙 자체가 달라 점수 대상이 아니다. 애초에 `MatchType` 이 `EVENT`/`ARCADE` 로 오기 때문에 `SCORABLE_MATCH_TYPES` 에서 걸러지지만, 방어적으로 **스쿼드 기본값 + `logger.debug`** 로 폴백한다.
@@ -570,6 +570,8 @@ def aggregate_stats(matches: Sequence[PlayerMatchStats], *, ranked: Stats | None
 
 ```python
 def make_match_stats_profile(profile: str, count: int = 10) -> list[PlayerMatchStats]: ...
+
+
 # profile ∈ {'rookie', 'average', 'skilled', 'pro'}
 ```
 

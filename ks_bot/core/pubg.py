@@ -13,6 +13,7 @@ from types import TracebackType
 
 from ks_bot.common.enums import SQUAD_GAME_MODES, GameMode, MatchType
 from ks_bot.common.errors import (
+    ApiRequestError,
     NotEnoughMatchesError,
     PlayerMatchStatsNotFoundError,
     PlayerNotFoundError,
@@ -53,6 +54,7 @@ class PubgBalancer:
         self._db_reset = db_reset
         self._api = ApiClient(api_key=api_key, base_url=f'https://api.pubg.com/shards/{platform}')
         self._repo = PlayerRepository(db_path)
+        self._cached_season_id: str | None = None
 
     @property
     def repository(self) -> PlayerRepository:
@@ -240,6 +242,29 @@ class PubgBalancer:
         if len(matches) < self.required_match_num:
             raise NotEnoughMatchesError(match_num=len(matches), required_match_num=self.required_match_num)
 
-        stats = aggregate_stats(matches)
+        ranked_stats = await self._fetch_ranked_stats_for_blend(player_name, matches)
+        stats = aggregate_stats(matches, ranked=ranked_stats)
         stats.type = MatchType.NORMAL
         return stats
+
+    async def _get_current_season_id(self) -> str:
+        """현재 시즌 ID를 얻는다. 시즌은 몇 달에 한 번 바뀌므로 프로세스 수명 동안 메모리에 캐시한다."""
+        if self._cached_season_id is None:
+            season = await self.fetch_current_season()
+            self._cached_season_id = season.get('id', '')
+        return self._cached_season_id
+
+    async def _fetch_ranked_stats_for_blend(self, player_name: str, matches: list[PlayerMatchStats]) -> Stats | None:
+        """랭크 매치가 하나라도 있을 때만 시즌 티어를 조회한다.
+
+        티어 조회는 점수 계산에 필수가 아니므로, 실패(레이트 리밋/미랭크/조회 실패)해도
+        `None`을 반환해 티어 결합 없이 점수를 계산하도록 한다.
+        """
+        if not any(match.match_type == MatchType.RANKED for match in matches):
+            return None
+        try:
+            season_id = await self._get_current_season_id()
+            return await self.fetch_ranked_stats(player_name, season_id)
+        except (ApiRequestError, PlayerMatchStatsNotFoundError) as e:
+            logger.info('시즌 티어 조회에 실패해 티어 결합 없이 점수를 계산합니다. player=%s, error=%s', player_name, e)
+            return None

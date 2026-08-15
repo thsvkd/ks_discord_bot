@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from factories import MATCH_IDS, make_match_payload, make_player_payload
-from ks_bot.common.enums import GameMode
+from factories import ACCOUNT_ID, MATCH_IDS, make_match_payload, make_player_payload, make_ranked_stats_payload, make_season_payload
+from ks_bot.common.enums import GameMode, Tier
 from ks_bot.common.errors import NotEnoughMatchesError, PlayerMatchStatsNotFoundError, PlayerNotFoundError, ResourceNotFoundError
 from ks_bot.core.pubg import PubgBalancer
 
@@ -160,3 +160,39 @@ class TestGetStats:
             await balancer.get_stats(player_name)
 
         assert exc_info.value.required_match_num == 2
+
+    async def test_normal_matches_do_not_fetch_tier(self, balancer: PubgBalancer, monkeypatch, player_name: str):
+        # 랭크 매치가 없으면 시즌/티어 엔드포인트를 아예 호출하지 않는다(§7.2).
+        api = build_api(player_name)
+        monkeypatch.setattr(balancer, '_request', api)
+
+        stats = await balancer.get_stats(player_name)
+
+        assert stats.tier == Tier.UNDEFINED
+        assert 'seasons' not in api.calls
+
+    async def test_ranked_matches_trigger_tier_blend(self, balancer: PubgBalancer, monkeypatch, player_name: str):
+        api = build_api(player_name, win_places=[2, 5, 8, 11])
+        for match_id in MATCH_IDS[:4]:
+            api.responses[f'matches/{match_id}']['data']['attributes']['matchType'] = 'competitive'
+        api.responses['seasons'] = make_season_payload('season-x')
+        api.responses[f'players/{ACCOUNT_ID}/seasons/season-x/ranked'] = make_ranked_stats_payload(tier='gold', sub_tier=3)
+        monkeypatch.setattr(balancer, '_request', api)
+
+        stats = await balancer.get_stats(player_name)
+
+        assert stats.tier == Tier.GOLD
+        assert stats.sub_tier == 3
+        assert 'seasons' in api.calls
+
+    async def test_tier_lookup_failure_falls_back_gracefully(self, balancer: PubgBalancer, monkeypatch, player_name: str):
+        # 랭크 매치는 있지만 시즌/티어 조회가 실패해도 점수 조회 자체는 성공해야 한다.
+        api = build_api(player_name, win_places=[2, 5, 8, 11])
+        for match_id in MATCH_IDS[:4]:
+            api.responses[f'matches/{match_id}']['data']['attributes']['matchType'] = 'competitive'
+        monkeypatch.setattr(balancer, '_request', api)
+
+        stats = await balancer.get_stats(player_name)
+
+        assert stats.tier == Tier.UNDEFINED
+        assert stats.score != 0.0
