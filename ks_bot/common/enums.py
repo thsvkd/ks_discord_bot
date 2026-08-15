@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-__all__ = ['GameMode', 'MatchType', 'Tier']
+__all__ = ['SQUAD_GAME_MODES', 'GameMode', 'MatchType', 'Tier']
 
 
 class _UndefinedFallbackEnum(Enum):
@@ -69,7 +69,22 @@ class GameMode(_UndefinedFallbackEnum):
 
     @property
     def is_squad(self) -> bool:
-        return 'squad' in self.value
+        """일반 스쿼드(TPP/FPP) 여부.
+
+        conquest/war/zombie 같은 이벤트 모드의 스쿼드는 포함하지 않는다.
+        """
+        return self in SQUAD_GAME_MODES
+
+
+# 전투력 계산 대상이 되는 스쿼드 모드. 3인칭/1인칭을 모두 포함한다.
+SQUAD_GAME_MODES = frozenset(
+    {
+        GameMode.SQUAD,
+        GameMode.SQUAD_FPP,
+        GameMode.NORMAL_SQUAD,
+        GameMode.NORMAL_SQUAD_FPP,
+    }
+)
 
 
 class MatchType(_UndefinedFallbackEnum):

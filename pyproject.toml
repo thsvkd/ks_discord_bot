@@ -34,7 +34,8 @@ packages = ["ks_bot"]
 minversion = "8.0"
 testpaths = ["tests"]
 pythonpath = [".", "tests"]
-addopts = "-ra -v --strict-markers"
+# 기본 실행은 외부 네트워크를 타지 않는다. 실제 API 검증은 `pytest -m network`로 명시 실행한다.
+addopts = "-ra -v --strict-markers -m 'not network'"
 asyncio_mode = "auto"
 markers = [
     "network: 외부 네트워크(PUBG/YouTube API)가 필요한 테스트 (`-m 'not network'`로 제외)",

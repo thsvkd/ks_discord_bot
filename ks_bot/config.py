@@ -6,35 +6,63 @@
 
 from __future__ import annotations
 
+import codecs
 import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from ks_bot.common.errors import ConfigError
 
-__all__ = ['PROJECT_ROOT', 'Settings', 'load_dotenv']
+__all__ = ['PROJECT_ROOT', 'Settings', 'load_dotenv', 'parse_dotenv', 'read_env_text']
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ENV_FILE = PROJECT_ROOT / '.env'
 
 
-def load_dotenv(path: Path = DEFAULT_ENV_FILE) -> None:
-    """`.env` 파일을 읽어 환경 변수에 채운다(이미 설정된 값은 덮어쓰지 않는다).
+def read_env_text(path: Path) -> str:
+    """`.env` 파일을 텍스트로 읽는다.
 
-    외부 의존성 없이 `KEY=VALUE` 형식만 지원한다.
+    윈도우 PowerShell의 `>>`/`Add-Content`는 기본적으로 UTF-16LE로 덧붙이기 때문에
+    UTF-8 파일에 UTF-16 구간이 섞이는 일이 흔하다. 이 경우 문자 사이에 NUL이 끼는데,
+    그대로 파싱하면 키 이름이 `D\\x00I\\x00S...` 형태가 되어 값을 못 읽는다.
+    NUL을 제거해 두 인코딩이 섞인 파일도 읽을 수 있게 한다.
     """
+    raw = path.read_bytes()
+    if raw.startswith(codecs.BOM_UTF16_LE) or raw.startswith(codecs.BOM_UTF16_BE):
+        return raw.decode('utf-16')
+    return raw.decode('utf-8-sig', errors='replace').replace('\x00', '')
+
+
+def parse_dotenv(text: str) -> dict[str, str]:
+    """`KEY=VALUE` 형식을 파싱한다. 같은 키가 여러 번 나오면 마지막 값을 쓴다.
+
+    값이 비어 있는 항목은 무시한다. (템플릿에 남아 있는 `KEY=` 줄이
+    아래쪽의 실제 값을 가리는 사고를 막는다.)
+    """
+    values: dict[str, str] = {}
+    for raw_line in text.splitlines():
+        line = raw_line.strip().lstrip('﻿')
+        if not line or line.startswith('#') or '=' not in line:
+            continue
+
+        key, _, value = line.partition('=')
+        key = key.strip()
+        if key.lower().startswith('export '):
+            key = key[len('export ') :].strip()
+        value = value.strip().strip('"').strip("'")
+
+        if key and value:
+            values[key] = value
+    return values
+
+
+def load_dotenv(path: Path = DEFAULT_ENV_FILE) -> None:
+    """`.env` 파일을 읽어 환경 변수에 채운다(이미 설정된 값은 덮어쓰지 않는다)."""
     if not path.is_file():
         return
 
-    for raw_line in path.read_text(encoding='utf-8').splitlines():
-        line = raw_line.strip()
-        if not line or line.startswith('#') or '=' not in line:
-            continue
-        key, _, value = line.partition('=')
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-        if key and key not in os.environ:
-            os.environ[key] = value
+    for key, value in parse_dotenv(read_env_text(path)).items():
+        os.environ.setdefault(key, value)
 
 
 def _env_str(name: str, default: str = '') -> str:

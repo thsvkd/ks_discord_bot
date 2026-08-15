@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import codecs
 from pathlib import Path
 
 import pytest
 
 from ks_bot.common.errors import ConfigError
-from ks_bot.config import Settings, load_dotenv
+from ks_bot.config import Settings, load_dotenv, parse_dotenv, read_env_text
 
 _ENV_KEYS = (
     'DISCORD_TOKEN',
@@ -99,3 +100,43 @@ class TestDotenv:
 
     def test_missing_file_is_ignored(self, tmp_path: Path):
         load_dotenv(tmp_path / 'nope.env')
+
+
+class TestDotenvParsing:
+    def test_last_value_wins_and_empty_is_ignored(self):
+        """템플릿에 남은 `KEY=` 빈 줄이 아래쪽 실제 값을 가리면 안 된다."""
+        parsed = parse_dotenv('DISCORD_TOKEN=\nPUBG_TOKEN=abc\nDISCORD_TOKEN=real-token\n')
+
+        assert parsed == {'PUBG_TOKEN': 'abc', 'DISCORD_TOKEN': 'real-token'}
+
+    def test_quotes_and_export_prefix(self):
+        parsed = parse_dotenv('export DISCORD_TOKEN="quoted"\nPUBG_TOKEN=\'single\'\n')
+
+        assert parsed == {'DISCORD_TOKEN': 'quoted', 'PUBG_TOKEN': 'single'}
+
+    def test_comments_and_malformed_lines_are_skipped(self):
+        assert parse_dotenv('# 주석\n\n형식이상\nKEY=value\n') == {'KEY': 'value'}
+
+    def test_value_containing_equals_sign(self):
+        assert parse_dotenv('TOKEN=a=b=c\n') == {'TOKEN': 'a=b=c'}
+
+    def test_utf16_appended_section_is_readable(self, tmp_path: Path):
+        """PowerShell `>>`로 덧붙이면 UTF-8 파일에 UTF-16LE 구간이 섞인다."""
+        env_file = tmp_path / '.env'
+        env_file.write_bytes(b'# comment\nPUBG_TOKEN=utf8-value\n' + 'DISCORD_TOKEN=utf16-value\n'.encode('utf-16-le'))
+
+        parsed = parse_dotenv(read_env_text(env_file))
+
+        assert parsed == {'PUBG_TOKEN': 'utf8-value', 'DISCORD_TOKEN': 'utf16-value'}
+
+    def test_utf16_file_with_bom(self, tmp_path: Path):
+        env_file = tmp_path / '.env'
+        env_file.write_bytes(codecs.BOM_UTF16_LE + 'DISCORD_TOKEN=bom-value\n'.encode('utf-16-le'))
+
+        assert parse_dotenv(read_env_text(env_file)) == {'DISCORD_TOKEN': 'bom-value'}
+
+    def test_utf8_bom_is_stripped(self, tmp_path: Path):
+        env_file = tmp_path / '.env'
+        env_file.write_bytes(codecs.BOM_UTF8 + b'DISCORD_TOKEN=value\n')
+
+        assert parse_dotenv(read_env_text(env_file)) == {'DISCORD_TOKEN': 'value'}

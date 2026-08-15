@@ -6,11 +6,12 @@ PUBG API 호출과 로컬 캐시(SQLite)를 조합해, 코그(cog)가 쓰는 도
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from datetime import timedelta
 from pathlib import Path
 from types import TracebackType
 
-from ks_bot.common.enums import GameMode, MatchType
+from ks_bot.common.enums import SQUAD_GAME_MODES, GameMode, MatchType
 from ks_bot.common.errors import (
     NotEnoughMatchesError,
     PlayerMatchStatsNotFoundError,
@@ -187,11 +188,16 @@ class PubgBalancer:
     async def get_latest_player_match_stats_list(
         self,
         player_name: str,
-        game_mode: GameMode = GameMode.SQUAD,
+        game_modes: Collection[GameMode] = SQUAD_GAME_MODES,
         max_match_num: int | None = None,
     ) -> list[PlayerMatchStats]:
-        """최근 매치 중 조건에 맞는 전적을 최대 `max_match_num`건 모은다."""
+        """최근 매치 중 조건에 맞는 전적을 최대 `max_match_num`건 모은다.
+
+        기본값은 스쿼드 3인칭/1인칭 전부다. 예전에는 `squad`(TPP)만 인정해서,
+        FPP 위주로 플레이하는 유저는 매치가 아무리 많아도 점수를 낼 수 없었다.
+        """
         limit = max_match_num or self._max_match_num
+        allowed_modes = frozenset(game_modes)
         player = await self.get_player(player_name)
         cached = await self._repo.get_player_match_stats_bulk(player_name, player.match_ids)
 
@@ -210,7 +216,7 @@ class PubgBalancer:
                     logger.debug('매치 전적을 건너뜁니다. match_id=%s, 사유=%s', match_id, e)
                     continue
 
-            if stats.game_mode != game_mode:
+            if stats.game_mode not in allowed_modes:
                 continue
             if stats.match_type not in SCORABLE_MATCH_TYPES:
                 continue

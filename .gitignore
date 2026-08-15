@@ -167,3 +167,5 @@ settings.json
 res/
 game_result/
 .env
+.env.*
+!.env.example

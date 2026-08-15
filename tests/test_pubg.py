@@ -24,13 +24,13 @@ class FakeApi:
         return self.responses[endpoint]
 
 
-def build_api(player_name: str, *, match_count: int = 5, win_places: list[int] | None = None) -> FakeApi:
+def build_api(player_name: str, *, match_count: int = 5, win_places: list[int] | None = None, game_mode: str = 'squad') -> FakeApi:
     win_places = win_places or [5] * match_count
     responses: dict[str, dict] = {
         f'players?filter[playerNames]={player_name}': {'data': [make_player_payload(player_name, match_count=match_count)]},
     }
     for match_id, win_place in zip(MATCH_IDS[:match_count], win_places, strict=False):
-        responses[f'matches/{match_id}'] = make_match_payload(match_id, player_name, win_place=win_place)
+        responses[f'matches/{match_id}'] = make_match_payload(match_id, player_name, win_place=win_place, game_mode=game_mode)
     return FakeApi(responses)
 
 
@@ -101,11 +101,26 @@ class TestMatchStats:
         api = build_api(player_name)
         monkeypatch.setattr(balancer, '_request', api)
 
-        squad = await balancer.get_latest_player_match_stats_list(player_name, game_mode=GameMode.SQUAD, max_match_num=10)
-        solo = await balancer.get_latest_player_match_stats_list(player_name, game_mode=GameMode.SOLO, max_match_num=10)
+        squad = await balancer.get_latest_player_match_stats_list(player_name, game_modes=[GameMode.SQUAD], max_match_num=10)
+        solo = await balancer.get_latest_player_match_stats_list(player_name, game_modes=[GameMode.SOLO], max_match_num=10)
 
         assert len(squad) == 5
         assert solo == []
+
+    async def test_fpp_squad_matches_are_included_by_default(self, balancer: PubgBalancer, monkeypatch, player_name: str):
+        """예전에는 squad(TPP)만 인정해서 FPP 유저는 점수를 낼 수 없었다."""
+        api = build_api(player_name, game_mode='squad-fpp')
+        monkeypatch.setattr(balancer, '_request', api)
+
+        collected = await balancer.get_latest_player_match_stats_list(player_name, max_match_num=10)
+
+        assert len(collected) == 5
+        assert all(stats.game_mode is GameMode.SQUAD_FPP for stats in collected)
+
+    async def test_duo_matches_are_excluded_by_default(self, balancer: PubgBalancer, monkeypatch, player_name: str):
+        monkeypatch.setattr(balancer, '_request', build_api(player_name, game_mode='duo-fpp'))
+
+        assert await balancer.get_latest_player_match_stats_list(player_name, max_match_num=10) == []
 
     async def test_latest_stats_respect_limit(self, balancer: PubgBalancer, monkeypatch, player_name: str):
         monkeypatch.setattr(balancer, '_request', build_api(player_name))

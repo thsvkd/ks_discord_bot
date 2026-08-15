@@ -12,9 +12,12 @@ from pathlib import Path
 
 import pytest
 
-from ks_bot.config import Settings
+from ks_bot.config import Settings, load_dotenv
 from ks_bot.core.pubg import PubgBalancer
 from ks_bot.core.repository import PlayerRepository
+
+# 로컬 `.env`에 PUBG_TOKEN이 있으면 network 마커 테스트를 그대로 실행할 수 있게 한다.
+load_dotenv()
 
 
 def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:

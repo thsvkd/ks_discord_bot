@@ -208,9 +208,9 @@ ks_bot/
 ## 8. 개발
 
 ```bash
-uv run pytest                       # 전체 테스트 (네트워크 테스트는 자동 스킵)
-uv run pytest -m "not network"      # 네트워크 테스트 명시적 제외
-PUBG_TOKEN=... uv run pytest -m network   # 실제 PUBG API 통합 테스트
+uv run pytest                       # 기본: 외부 네트워크를 타지 않는 테스트만 실행
+uv run pytest -m network            # 실제 PUBG API 통합 테스트 (.env의 PUBG_TOKEN 사용)
+uv run pytest -m ''                 # 둘 다 실행
 
 uv run ruff check .                 # 린트
 uv run ruff format .                # 포맷
@@ -223,7 +223,16 @@ uv lock --upgrade                   # 잠긴 버전 일괄 업그레이드
 `uv.lock`은 저장소에 커밋되어 있으므로, 모든 환경과 CI가 완전히 동일한 버전으로 실행됩니다.
 
 - 단위 테스트는 외부 네트워크에 접속하지 않습니다. HTTP 클라이언트 테스트는 로컬 aiohttp 테스트 서버를 띄웁니다.
-- `PUBG_TOKEN`이 설정된 경우에만 `network` 마커 테스트가 실행됩니다.
+- `network` 마커 테스트는 기본 실행에서 제외됩니다. PUBG 무료 등급은 분당 10회 제한이 있어, 다른 테스트와 함께 반복 실행하면 레이트 리밋에 걸립니다.
+- `PUBG_TOKEN`이 없으면 `-m network`로 실행해도 자동으로 건너뜁니다.
+
+### 채널 ID를 모를 때
+
+```bash
+uv run python scripts/send_message.py --list-channels
+```
+
+봇이 속한 서버의 텍스트 채널과 ID, 전송 가능 여부를 표로 보여줍니다.
 
 ### 새 커맨드 추가하기
 

@@ -32,9 +32,20 @@ async def live_balancer(tmp_path) -> AsyncIterator[PubgBalancer]:
 
 async def test_fetch_player_by_name(live_balancer: PubgBalancer):
     player = await live_balancer.fetch_player_by_name(REAL_PLAYER_NAME)
+
     assert player.name == REAL_PLAYER_NAME
     assert player.platform == 'steam'
-    assert player.match_ids
+    assert player.id.startswith('account.')
+    assert player.normalized_id and '-' not in player.normalized_id
+    # PUBG API는 최근 14일 이내 매치만 돌려주므로, 목록이 비어 있을 수 있다.
+    assert isinstance(player.match_list, list)
+
+
+async def test_player_is_cached_after_fetch(live_balancer: PubgBalancer):
+    fetched = await live_balancer.get_player(REAL_PLAYER_NAME)
+    cached = await live_balancer.repository.get_player(player_name=REAL_PLAYER_NAME)
+
+    assert cached == fetched
 
 
 async def test_unknown_player_raises(live_balancer: PubgBalancer):

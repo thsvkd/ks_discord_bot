@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 import pytest
 
 from factories import make_match_payload, make_player_payload
-from ks_bot.common.enums import GameMode, MatchType, Tier
+from ks_bot.common.enums import SQUAD_GAME_MODES, GameMode, MatchType, Tier
 from ks_bot.common.errors import KSBotError, NotEnoughMatchesError, PlayerMatchStatsNotFoundError, PlayerNotFoundError
 from ks_bot.common.models import Match, Player, Stats, normalize_player_id
 from ks_bot.common.timeutil import Timezone, datetime_now, parse_utc_to_datetime, to_iso, unix_time_start
@@ -31,9 +31,26 @@ class TestEnums:
         assert MatchType('brand-new-type') is MatchType.UNDEFINED
         assert Tier('brand-new-tier') is Tier.UNDEFINED
 
-    @pytest.mark.parametrize('mode, expected', [(GameMode.SQUAD, True), (GameMode.SQUAD_FPP, True), (GameMode.SOLO, False)])
+    @pytest.mark.parametrize(
+        'mode, expected',
+        [
+            (GameMode.SQUAD, True),
+            (GameMode.SQUAD_FPP, True),
+            (GameMode.NORMAL_SQUAD, True),
+            (GameMode.SOLO, False),
+            (GameMode.DUO_FPP, False),
+            # 이벤트성 모드의 스쿼드는 일반 스쿼드로 보지 않는다.
+            (GameMode.ZOMBIE_SQUAD, False),
+            (GameMode.WAR_SQUAD, False),
+        ],
+    )
     def test_is_squad(self, mode: GameMode, expected: bool):
         assert mode.is_squad is expected
+
+    def test_squad_game_modes_membership(self):
+        assert GameMode.SQUAD in SQUAD_GAME_MODES
+        assert GameMode.SQUAD_FPP in SQUAD_GAME_MODES
+        assert GameMode.DUO not in SQUAD_GAME_MODES
 
 
 class TestTimeUtil:
