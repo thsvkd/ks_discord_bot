@@ -11,6 +11,7 @@ from ks_bot.common.enums import GameMode, MatchType, Tier
 from ks_bot.common.models import Stats
 from ks_bot.core.scoring import (
     DAMAGE_REFERENCE,
+    HEADSHOT_BASE,
     HEADSHOT_SWING,
     MODE_TEAM_COUNT,
     PRIOR_SCORE,
@@ -165,6 +166,12 @@ class TestMatchScoreBoundaries:
         # B7
         match = make_match_stats(game_mode=GameMode.UNDEFINED)
         assert calculate_match_score(match) >= 0.0
+
+    @pytest.mark.parametrize('damage', [-1.0, -400.0, -800.0, -10_000.0])
+    def test_negative_damage_is_treated_as_zero(self, damage: float):
+        """파손 데이터로 딜량이 음수면 `sat()`이 -400에서 터지고 -800에서는 64점을 준다."""
+        match = make_match_stats(damage_dealt=damage, kills=0, DBNOs=0, assists=0, kill_place=0, revives=0, team_kills=0, win_place=0)
+        assert calculate_match_score(match) == pytest.approx(0.0)
 
 
 class TestModeNormalization:
@@ -378,6 +385,16 @@ class TestAggregateStats:
         )
         assert stats.top10_ratio == pytest.approx(0.5)
 
+    def test_zero_win_place_is_not_counted_as_top10(self):
+        """`win_place=0`은 등수를 못 받은 파손 데이터다. 1등보다 앞선 것으로 세면 안 된다."""
+        stats = aggregate_stats(
+            [
+                make_match_stats(win_place=0, game_mode=GameMode.SQUAD, match_id='a'),
+                make_match_stats(win_place=3, game_mode=GameMode.SQUAD, match_id='b'),
+            ]
+        )
+        assert stats.top10_ratio == pytest.approx(0.5)
+
     def test_aggregation(self):
         matches = [
             make_match_stats(win_place=1, kills=5, assists=1, damage_dealt=500.0, death_type='alive'),
@@ -401,9 +418,18 @@ class TestAggregateStats:
         assert aggregate_stats([]).rounds_played == 0
 
 
+PERSONAS = ('rookie', 'average', 'skilled', 'pro')
+
+
 @pytest.fixture(scope='module')
 def persona_scores() -> dict[str, float]:
-    return {profile: calculate_stats_score(make_match_stats_profile(profile, count=10)) for profile in ('rookie', 'average', 'skilled', 'pro')}
+    return {profile: calculate_stats_score(make_match_stats_profile(profile, count=10)) for profile in PERSONAS}
+
+
+@pytest.fixture(scope='module')
+def persona_aggregate_scores() -> dict[str, float]:
+    """실제 `/점수`가 쓰는 경로. 헤드샷 보정까지 거친 값이다."""
+    return {profile: aggregate_stats(make_match_stats_profile(profile, count=10)).score for profile in PERSONAS}
 
 
 class TestPersonaVerification:
@@ -425,3 +451,86 @@ class TestPersonaVerification:
 
     def test_bounded(self, persona_scores: dict[str, float]):
         assert all(0.0 <= value <= 100.0 for value in persona_scores.values())
+
+
+class TestPersonaAggregateVerification:
+    """§13.3 A9 — 같은 어서션을 실제 사용자 경로(`aggregate_stats().score`)에도 건다.
+
+    `calculate_stats_score()`만 검증하면 집계 단계에서만 적용되는 헤드샷 보정·티어 결합이
+    문서 수치와 임베드 출력을 조용히 갈라놓는다.
+    """
+
+    def test_strict_ordering(self, persona_aggregate_scores: dict[str, float]):
+        scores = persona_aggregate_scores
+        assert scores['rookie'] < scores['average'] < scores['skilled'] < scores['pro']
+
+    def test_gaps(self, persona_aggregate_scores: dict[str, float]):
+        assert persona_aggregate_scores['average'] - persona_aggregate_scores['rookie'] >= 12.0
+        assert persona_aggregate_scores['skilled'] - persona_aggregate_scores['average'] >= 12.0
+        assert persona_aggregate_scores['pro'] - persona_aggregate_scores['skilled'] >= 5.0
+
+    def test_bands(self, persona_aggregate_scores: dict[str, float]):
+        assert 21.6 <= persona_aggregate_scores['rookie'] <= 27.6
+        assert 38.0 <= persona_aggregate_scores['average'] <= 44.0
+        assert 53.5 <= persona_aggregate_scores['skilled'] <= 59.5
+        assert 61.4 <= persona_aggregate_scores['pro'] <= 67.4
+
+    def test_bounded(self, persona_aggregate_scores: dict[str, float]):
+        assert all(0.0 <= value <= 100.0 for value in persona_aggregate_scores.values())
+
+    def test_matches_the_pre_adjustment_score(self, persona_scores: dict[str, float], persona_aggregate_scores: dict[str, float]):
+        """티어를 주지 않았고 페르소나 헤드샷 비율이 기준선과 같으므로 두 경로가 일치해야 한다."""
+        for profile in PERSONAS:
+            assert persona_aggregate_scores[profile] == pytest.approx(persona_scores[profile])
+
+    @pytest.mark.parametrize('profile', PERSONAS)
+    def test_matches_documented_values(self, profile: str, persona_aggregate_scores: dict[str, float]):
+        # §13.2 표의 값이 집계 경로에서도 그대로 나와야 한다(헤드샷 비율이 기준선과 같아 보정이 0).
+        documented = {'rookie': 24.6, 'average': 41.0, 'skilled': 56.5, 'pro': 64.4}
+        assert persona_aggregate_scores[profile] == pytest.approx(documented[profile], abs=0.1)
+
+    @pytest.mark.parametrize('profile', PERSONAS)
+    def test_persona_headshot_ratio_is_baseline(self, profile: str):
+        # 페르소나 표본의 누적 헤드샷 비율이 기준선과 같아야 위 등식이 성립한다.
+        matches = make_match_stats_profile(profile, count=10)
+        kills = sum(match.kills for match in matches)
+        headshots = sum(match.headshot_kills for match in matches)
+        if kills == 0:
+            assert headshots == 0
+        else:
+            assert headshots / kills == pytest.approx(HEADSHOT_BASE)
+
+
+class TestHeadshotAdjustmentInAggregate:
+    """§12.6 A8 — 헤드샷 보정이 집계 경로에 실제로 반영되는지 확인한다."""
+
+    def test_zero_headshot_ratio_costs_full_swing(self):
+        baseline = aggregate_stats(make_match_stats_profile('skilled', count=10)).score
+        no_headshot = aggregate_stats(make_match_stats_profile('skilled', count=10, headshot_kills=0)).score
+        assert no_headshot == pytest.approx(baseline - HEADSHOT_SWING)
+
+    def test_full_headshot_ratio_gains_full_swing(self):
+        baseline = aggregate_stats(make_match_stats_profile('skilled', count=10)).score
+        all_headshot = aggregate_stats(make_match_stats_profile('skilled', count=10, headshot_kills=4)).score  # kills=4 → 비율 1.0
+        assert all_headshot == pytest.approx(baseline + HEADSHOT_SWING)
+
+    def test_below_min_kills_leaves_score_untouched(self):
+        # 총 킬이 HEADSHOT_MIN_KILLS 미만이면 보정이 없어 축소 보정 결과와 정확히 같다.
+        matches = make_match_stats_profile('skilled', count=2, kills=1, DBNOs=1, headshot_kills=0)
+        assert aggregate_stats(matches).score == pytest.approx(calculate_stats_score(matches))
+
+
+class TestRankedPersonaScenario:
+    """§13.4 — 중수 성적으로 랭크만 10판, 시즌 티어 Diamond/5."""
+
+    def test_documented_final_score(self):
+        matches = make_match_stats_profile('average', count=10, match_type=MatchType.RANKED)
+        stats = aggregate_stats(matches, ranked=Stats(tier=Tier.DIAMOND, sub_tier=5))
+        assert calculate_tier_score(Tier.DIAMOND, 5) == pytest.approx(70.0)
+        assert stats.score == pytest.approx(55.5, abs=0.1)
+
+    def test_beats_the_old_fixed_ranked_score(self):
+        # 회귀 방지 — 예전 로직은 랭크 매치를 1.2점 고정으로 채점했다.
+        matches = make_match_stats_profile('average', count=10, match_type=MatchType.RANKED)
+        stats = aggregate_stats(matches, ranked=Stats(tier=Tier.DIAMOND, sub_tier=5))
+        assert stats.score > 1.2

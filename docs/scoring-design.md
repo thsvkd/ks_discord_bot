@@ -548,6 +548,8 @@ def aggregate_stats(matches: Sequence[PlayerMatchStats], *, ranked: Stats | None
 | A5 | `top10_ratio` 재정의 | 스쿼드에서 `win_place=3` 은 상위 10%(임계 2~3등) 안, `win_place=8` 은 밖 |
 | A6 | 헤드샷 보정 게이팅 | 총 킬 9 → 보정 0. 총 킬 10, 헤드샷 비율 0.4 → 가점 발생 |
 | A7 | 헤드샷 보정 한계 | 헤드샷 비율 1.0이어도 가점이 `HEADSHOT_SWING` 을 넘지 않는다 |
+| A8 | 헤드샷 보정의 집계 반영 | 같은 성적에서 헤드샷만 바꾸면 `aggregate_stats().score` 가 정확히 `±HEADSHOT_SWING` 만큼 움직인다 |
+| A9 | 페르소나 집계 밴드 | §13.3의 순서·간격·대역을 `aggregate_stats().score` 에도 그대로 건다 |
 
 ### 12.7 수정이 필요한 기존 테스트
 
@@ -575,13 +577,22 @@ def make_match_stats_profile(profile: str, count: int = 10) -> list[PlayerMatchS
 # profile ∈ {'rookie', 'average', 'skilled', 'pro'}
 ```
 
+`headshot_kills` 는 §13 전제(누적 비율 0.20)를 지키도록 판마다 나눠 담는다. 나머지 필드는 전부 복제한다.
+
 기존 `make_match_stats()` 의 기본값은 **바꾸지 않는다**(다른 테스트가 의존한다).
 
 ---
 
 ## 13. 검증 시나리오
 
-스쿼드 매치 10판, 각 판의 스탯이 아래 값으로 **일정**하다고 가정한다(테스트에서는 동일 매치를 10개 복제하면 된다). `revives = 0`, `team_kills = 0`, `headshot_kills = 0`, `death_type = 'byplayer'` 로 고정.
+스쿼드 매치 10판, 각 판의 스탯이 아래 값으로 **일정**하다고 가정한다(테스트에서는 동일 매치를 10개 복제하면 된다). `revives = 0`, `team_kills = 0`, `death_type = 'byplayer'` 로 고정.
+
+`headshot_kills` 는 **표본 전체의 누적 비율이 `HEADSHOT_BASE`(0.20)** 가 되도록 판마다 나눠 담는다
+(예: 중수 10판 = 총 킬 20, 헤드샷 4). 킬이 있는데 헤드샷이 0인 표본은 비현실적일 뿐 아니라,
+`calculate_headshot_adjustment` 가 `hs_ratio = 0` 에서 정확히 하한 `-HEADSHOT_SWING` 에 닿기 때문에
+검증 시나리오 전체가 상시 -2점 이동한 값을 보게 된다. 기준선과 같은 비율을 주면 헤드샷 보정이 0이 되어,
+아래 수치가 **`calculate_stats_score()` 와 실제 사용자 경로인 `aggregate_stats().score` 양쪽에서 동일**하게 나온다.
+헤드샷 보정 자체의 검증은 §12.6 A6/A7과 집계 통합 테스트가 따로 맡는다.
 
 | 페르소나 | `win_place` | `damage_dealt` | `kills` | `DBNOs` | `assists` | `time_survived` | `kill_place` |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -612,6 +623,9 @@ def make_match_stats_profile(profile: str, count: int = 10) -> list[PlayerMatchS
 
 40판 표본(`(40*base + 200)/45`)이면 각각 **19.4 / 41.3 / 62.1 / 72.6** 이 되어 프로가 최고 등급에 들어간다. 즉 **최고 등급은 충분한 표본을 요구한다** — 의도된 성질이다.
 
+위 표는 `calculate_stats_score()` 뿐 아니라 임베드에 실제로 찍히는 `aggregate_stats().score` 의 값이기도 하다
+(§13 전제대로 헤드샷 비율이 기준선과 같아 보정이 0이다).
+
 ### 13.3 구현 태스크가 테스트로 고정해야 할 어서션
 
 ```
@@ -634,6 +648,19 @@ pro     ∈ [61.4, 67.4]    # 실측 64.4
 ```
 
 허용오차 ±3.0은 상수 재보정(§11)이 소폭 일어나도 테스트가 깨지지 않게 하되, 모델이 근본적으로 바뀌면 잡히도록 잡은 값이다. **순서 어서션은 허용오차 없이 엄격하게** 둔다.
+
+위 어서션은 `calculate_stats_score()` 와 **`aggregate_stats().score` 양쪽에 건다.** 헤드샷 보정과 티어 결합은
+집계 단계에서만 적용되므로, 실제 사용자 경로를 고정하지 않으면 문서 수치와 임베드 출력이 조용히 갈라진다.
+집계 경로에는 다음 두 가지를 추가로 고정한다.
+
+```
+# 헤드샷 보정이 집계 경로에 실제로 반영되는가 (같은 성적, 헤드샷만 다름)
+aggregate(hs_ratio=0.0).score == aggregate(hs_ratio=0.2).score - HEADSHOT_SWING
+aggregate(hs_ratio=1.0).score == aggregate(hs_ratio=0.2).score + HEADSHOT_SWING
+
+# §13.4 랭크 시나리오
+aggregate(중수 10판, 전부 랭크, Diamond/5).score == 55.5
+```
 
 ### 13.4 랭크 시나리오
 
