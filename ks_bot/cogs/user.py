@@ -17,7 +17,7 @@ class User(commands.Cog, name='유저관리'):
     def __init__(self, bot: KSBot):
         self.bot = bot
 
-    @commands.command(name='추방', help='유저를 추방합니다.', description='유저를 추방합니다.')
+    @commands.hybrid_command(name='추방', help='유저를 추방합니다.', description='유저를 추방합니다.')
     @commands.guild_only()
     @commands.has_permissions(kick_members=True)
     @commands.bot_has_permissions(kick_members=True)
@@ -25,7 +25,7 @@ class User(commands.Cog, name='유저관리'):
         await member.kick(reason=f'요청자: {ctx.author}')
         await ctx.send(f'{member} 님이 추방되었습니다.')
 
-    @commands.command(name='차단', help='유저를 차단합니다.', description='유저를 차단합니다.')
+    @commands.hybrid_command(name='차단', help='유저를 차단합니다.', description='유저를 차단합니다.')
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
@@ -33,7 +33,7 @@ class User(commands.Cog, name='유저관리'):
         await member.ban(reason=f'요청자: {ctx.author}')
         await ctx.send(f'{member} 님이 차단되었습니다.')
 
-    @commands.command(name='차단해제', help='유저를 차단해제합니다.', description='유저를 차단해제합니다.')
+    @commands.hybrid_command(name='차단해제', help='유저를 차단해제합니다.', description='유저를 차단해제합니다.')
     @commands.guild_only()
     @commands.has_permissions(ban_members=True)
     @commands.bot_has_permissions(ban_members=True)
@@ -47,7 +47,7 @@ class User(commands.Cog, name='유저관리'):
 
         await ctx.send(f'{nickname} 님은 차단 목록에 없습니다.')
 
-    @commands.command(name='역할부여', help='유저에게 역할을 부여합니다.', description='유저에게 역할을 부여합니다.')
+    @commands.hybrid_command(name='역할부여', help='유저에게 역할을 부여합니다.', description='유저에게 역할을 부여합니다.')
     @commands.guild_only()
     @commands.has_permissions(manage_roles=True)
     @commands.bot_has_permissions(manage_roles=True)

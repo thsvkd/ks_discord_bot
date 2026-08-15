@@ -10,7 +10,7 @@ from discord.ext import commands
 import ks_bot.cogs as cogs_package
 from ks_bot.common.errors import KSBotError
 from ks_bot.config import Settings
-from ks_bot.help_command import CustomHelpCommand
+from ks_bot.help_command import CustomHelpCommand, register_help_app_command
 from ks_bot.logging_config import get_logger
 
 __all__ = ['KSBot', 'build_intents']
@@ -47,6 +47,31 @@ class KSBot(commands.Bot):
 
     async def setup_hook(self) -> None:
         await self.load_all_extensions()
+        register_help_app_command(self)
+        await self.sync_commands()
+
+    async def sync_commands(self) -> list:
+        """슬래시 커맨드를 디스코드에 등록한다.
+
+        하이브리드 커맨드는 등록해야 비로소 `/` 목록과 `+` → "앱 사용" 메뉴에 나타난다.
+        전역 등록은 반영까지 최대 1시간이 걸리므로, 길드 ID가 설정돼 있으면 그쪽으로도
+        복사해 즉시 쓸 수 있게 한다.
+        """
+        guild_id = self.settings.slash_guild_id
+        try:
+            if guild_id:
+                guild = discord.Object(id=guild_id)
+                self.tree.copy_global_to(guild=guild)
+                synced = await self.tree.sync(guild=guild)
+                logger.info('슬래시 커맨드 %d개를 길드(%s)에 등록했습니다.', len(synced), guild_id)
+            else:
+                synced = await self.tree.sync()
+                logger.info('슬래시 커맨드 %d개를 전역 등록했습니다. (반영까지 최대 1시간)', len(synced))
+            return synced
+        except discord.HTTPException:
+            # 등록에 실패해도 접두사 커맨드는 그대로 동작해야 한다.
+            logger.exception('슬래시 커맨드 등록에 실패했습니다. 접두사 커맨드는 계속 사용할 수 있습니다.')
+            return []
 
     async def load_all_extensions(self) -> list[str]:
         """`ks_bot.cogs` 하위 모듈을 모두 로드하고, 성공한 확장 이름을 반환한다."""

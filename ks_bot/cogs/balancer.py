@@ -202,7 +202,7 @@ class Balancer(commands.Cog, name='밸런서'):
 
     # ---------- 커맨드 ----------
 
-    @commands.command(
+    @commands.hybrid_command(
         name='점수',
         help='유저의 스탯 점수를 출력합니다.',
         description='유저의 스탯 점수를 출력합니다.',

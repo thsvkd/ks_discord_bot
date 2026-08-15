@@ -142,6 +142,7 @@ class Settings:
     giveaway_stores: tuple[Store, ...] = DEFAULT_GIVEAWAY_STORES
     giveaway_mention_role_id: int = 0
     giveaway_include_upcoming: bool = True
+    slash_guild_id: int = 0
 
     @classmethod
     def from_env(cls, *, require_discord_token: bool = True) -> Settings:
@@ -179,6 +180,7 @@ class Settings:
             giveaway_stores=_env_stores('KS_BOT_GIVEAWAY_STORES', DEFAULT_GIVEAWAY_STORES),
             giveaway_mention_role_id=_env_int('KS_BOT_GIVEAWAY_MENTION_ROLE_ID', 0),
             giveaway_include_upcoming=_env_bool('KS_BOT_GIVEAWAY_INCLUDE_UPCOMING', True),
+            slash_guild_id=_env_int('KS_BOT_SLASH_GUILD_ID', 0),
         )
 
     @property

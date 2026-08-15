@@ -334,7 +334,7 @@ class GiveawayCog(commands.Cog, name='무료배포'):
 
     # ---------- 커맨드 ----------
 
-    @commands.command(
+    @commands.hybrid_command(
         name='무료게임',
         help='지금 무료로 받을 수 있는 게임을 보여줍니다.',
         description='지금 무료로 받을 수 있는 게임을 보여줍니다.',

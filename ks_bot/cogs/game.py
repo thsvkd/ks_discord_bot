@@ -59,16 +59,16 @@ class Game(commands.Cog, name='게임'):
             return ''
         return await asyncio.to_thread(path.read_text, 'utf-8')
 
-    @commands.command(name='주사위', help='주사위를 굴립니다.')
+    @commands.hybrid_command(name='주사위', help='주사위를 굴립니다.')
     async def dice(self, ctx: commands.Context) -> None:
         await ctx.send(f'주사위 결과는 {random.randint(1, 6)} 입니다.')
 
-    @commands.command(name='뽑기', help='뽑기를 합니다.')
+    @commands.hybrid_command(name='뽑기', help='뽑기를 합니다.')
     async def mining(self, ctx: commands.Context) -> None:
         results = random.choices(MINERALS, weights=MINERAL_WEIGHTS, k=5)
         await ctx.send(f'{", ".join(results)} 광물들을 획득하였습니다.')
 
-    @commands.command(name='가위바위보', help='가위바위보 게임을 합니다. 사용법: 가위바위보 <가위|바위|보>')
+    @commands.hybrid_command(name='가위바위보', help='가위바위보 게임을 합니다. 사용법: 가위바위보 <가위|바위|보>')
     async def rock_paper_scissors(self, ctx: commands.Context, user: str) -> None:
         if user not in RPS_CHOICES:
             await ctx.send(f'`{", ".join(RPS_CHOICES)}` 중 하나를 입력해주세요.')
@@ -86,7 +86,7 @@ class Game(commands.Cog, name='게임'):
         await ctx.send(reply)
         await self.append_result(str(ctx.author), f'{user} vs {bot_choice} {record}\n')
 
-    @commands.command(name='전적', help='가위바위보 전적을 확인합니다.')
+    @commands.hybrid_command(name='전적', help='가위바위보 전적을 확인합니다.')
     async def game_board(self, ctx: commands.Context) -> None:
         result = await self.read_result(str(ctx.author))
         if not result:

@@ -8,7 +8,15 @@ import pytest
 from discord.ext import commands
 
 from ks_bot.bot import KSBot
-from ks_bot.help_command import HELP_COMMAND_ATTRS, _chunk_lines, format_command_line
+from ks_bot.help_command import (
+    HELP_COMMAND_ATTRS,
+    SLASH_HELP_NAME,
+    _chunk_lines,
+    build_help_embed,
+    collect_command_mapping,
+    format_command_line,
+    register_help_app_command,
+)
 
 
 def make_command(name: str, *, aliases: list[str] | None = None, help_text: str = '') -> commands.Command:
@@ -39,6 +47,69 @@ class TestHelpRegistration:
         aliases = HELP_COMMAND_ATTRS['aliases']
         assert len(aliases) == len(set(aliases))
         assert HELP_COMMAND_ATTRS['name'] not in aliases
+
+
+class TestSlashCommands:
+    async def test_every_command_appears_in_the_slash_list(self, bot: KSBot):
+        """`/`를 눌렀을 때 목록에 뜨려면 앱 커맨드로 등록돼 있어야 한다."""
+        await bot.load_all_extensions()
+
+        app_names = {command.name for command in bot.tree.get_commands()}
+        prefix_names = {command.name for command in bot.commands if not command.hidden}
+
+        # 접두사 전용은 도움말 하나뿐이고, 그건 슬래시 전용 이름으로 따로 등록한다.
+        assert prefix_names - app_names == {'help'}
+
+    async def test_help_is_reachable_from_the_slash_list(self, bot: KSBot):
+        await bot.load_all_extensions()
+        register_help_app_command(bot)
+
+        assert bot.tree.get_command(SLASH_HELP_NAME) is not None
+
+    async def test_registering_help_twice_is_safe(self, bot: KSBot):
+        """`setup_hook`이 재연결로 다시 불려도 중복 등록되면 안 된다."""
+        await bot.load_all_extensions()
+        register_help_app_command(bot)
+        register_help_app_command(bot)
+
+        assert sum(1 for c in bot.tree.get_commands() if c.name == SLASH_HELP_NAME) == 1
+
+    async def test_slash_names_are_valid(self, bot: KSBot):
+        """디스코드는 앱 커맨드 이름에 대문자·공백을 허용하지 않는다(32자 제한)."""
+        await bot.load_all_extensions()
+        register_help_app_command(bot)
+
+        for command in bot.tree.get_commands():
+            assert command.name == command.name.lower(), command.name
+            assert ' ' not in command.name, command.name
+            assert 1 <= len(command.name) <= 32, command.name
+
+    async def test_slash_descriptions_fit_the_limit(self, bot: KSBot):
+        """설명이 100자를 넘으면 등록 자체가 거부된다."""
+        await bot.load_all_extensions()
+        register_help_app_command(bot)
+
+        for command in bot.tree.get_commands():
+            assert 1 <= len(command.description) <= 100, (command.name, len(command.description))
+
+
+class TestBuildHelpEmbed:
+    async def test_lists_every_cog(self, bot: KSBot):
+        await bot.load_all_extensions()
+
+        embed = build_help_embed(collect_command_mapping(bot), '/')
+
+        names = ' '.join(field.name for field in embed.fields)
+        assert '음악' in names
+        assert '밸런서' in names
+
+    async def test_field_values_fit_discord_limit(self, bot: KSBot):
+        await bot.load_all_extensions()
+
+        embed = build_help_embed(collect_command_mapping(bot), '/')
+
+        assert all(len(field.value) <= 1024 for field in embed.fields)
+        assert len(embed) <= 6000  # 임베드 전체 길이 제한
 
 
 class TestFormatCommandLine:

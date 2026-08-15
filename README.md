@@ -180,6 +180,7 @@ uv run python scripts/send_message.py --channel-id 1234567890123456789 --message
 | `KS_BOT_GIVEAWAY_STORES` | `steam,epic,gog` | 알릴 스토어 목록. `itch`, `ubisoft`, `amazon`, `origin`, `microsoft`, `other` 추가 가능 |
 | `KS_BOT_GIVEAWAY_MENTION_ROLE_ID` | (없음) | 알림 시 멘션할 역할 ID |
 | `KS_BOT_GIVEAWAY_INCLUDE_UPCOMING` | `true` | 다음 주 예정 배포도 미리 알릴지 |
+| `KS_BOT_SLASH_GUILD_ID` | (없음) | 슬래시 커맨드를 즉시 등록할 서버 ID. 없으면 전역 등록(반영까지 최대 1시간) |
 
 ---
 

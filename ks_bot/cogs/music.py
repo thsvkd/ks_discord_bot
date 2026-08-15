@@ -246,7 +246,7 @@ class Music(commands.Cog, name='음악'):
 
     # ---------- 커맨드 ----------
 
-    @commands.command(
+    @commands.hybrid_command(
         name='재생',
         help='음악을 재생할 수 있는 명령어. 사용법: /재생 <유튜브 링크> 또는 /재생 <검색어>',
         description='음악을 재생합니다.',
@@ -282,7 +282,7 @@ class Music(commands.Cog, name='음악'):
         if is_first:
             player.task = asyncio.create_task(self._player_loop(player))
 
-    @commands.command(
+    @commands.hybrid_command(
         name='반복',
         help='재생중인 음악을 무한 반복하거나 무한 반복을 해제합니다.',
         description='재생중인 음악을 무한 반복하거나 무한 반복을 해제합니다.',
@@ -298,7 +298,7 @@ class Music(commands.Cog, name='음악'):
             off_text=f'{ctx.author.mention} 무한반복이 해제되었습니다.',
         )
 
-    @commands.command(
+    @commands.hybrid_command(
         name='랜덤재생',
         help='대기 리스트에서 음악을 무작위로 재생합니다.',
         description='대기 리스트에서 음악을 무작위로 재생합니다.',
@@ -314,7 +314,7 @@ class Music(commands.Cog, name='음악'):
             off_text=f'{ctx.author.mention} 랜덤 재생이 해제되었습니다.',
         )
 
-    @commands.command(name='스킵', help='재생중인 음악을 스킵합니다.', description='재생중인 음악을 스킵합니다.', aliases=['skip'])
+    @commands.hybrid_command(name='스킵', help='재생중인 음악을 스킵합니다.', description='재생중인 음악을 스킵합니다.', aliases=['skip'])
     @commands.guild_only()
     async def skip(self, ctx: commands.Context) -> None:
         player = await self.ensure_voice(ctx)
@@ -325,7 +325,7 @@ class Music(commands.Cog, name='음악'):
         player.voice.stop()
         await ctx.send(f'{ctx.author.mention} 다음 곡으로 넘어갈께요.')
 
-    @commands.command(name='정지', help='음악 재생을 멈춥니다.', description='음악 재생을 멈춥니다.', aliases=['stop'])
+    @commands.hybrid_command(name='정지', help='음악 재생을 멈춥니다.', description='음악 재생을 멈춥니다.', aliases=['stop'])
     @commands.guild_only()
     async def stop(self, ctx: commands.Context) -> None:
         player = await self.ensure_voice(ctx, allow_paused=True)
@@ -337,7 +337,7 @@ class Music(commands.Cog, name='음악'):
         player.voice.stop()
         await ctx.send(f'{ctx.author.mention} 재생을 멈췄습니다.')
 
-    @commands.command(name='일시정지', help='음악을 일시정지합니다.', description='음악을 일시정지합니다.', aliases=['pause'])
+    @commands.hybrid_command(name='일시정지', help='음악을 일시정지합니다.', description='음악을 일시정지합니다.', aliases=['pause'])
     @commands.guild_only()
     async def pause(self, ctx: commands.Context) -> None:
         player = await self.ensure_voice(ctx)
@@ -346,7 +346,7 @@ class Music(commands.Cog, name='음악'):
         player.voice.pause()
         await ctx.send(f'{ctx.author.mention} 플레이어를 일시정지했습니다.')
 
-    @commands.command(name='계속재생', help='음악 일시정지를 해제합니다.', description='음악 일시정지를 해제합니다.', aliases=['resume'])
+    @commands.hybrid_command(name='계속재생', help='음악 일시정지를 해제합니다.', description='음악 일시정지를 해제합니다.', aliases=['resume'])
     @commands.guild_only()
     async def resume(self, ctx: commands.Context) -> None:
         player = await self.ensure_voice(ctx, allow_paused=True)
@@ -355,7 +355,7 @@ class Music(commands.Cog, name='음악'):
         player.voice.resume()
         await ctx.send(f'{ctx.author.mention} 음악을 계속 재생합니다.')
 
-    @commands.command(
+    @commands.hybrid_command(
         name='강제연결해제',
         help='봇 오류로 음악 재생에 문제가 발생했을 때 강제로 접속을 해제합니다.',
         description='봇 오류로 음악 재생에 문제가 발생했을 때 강제로 접속을 해제합니다.',
@@ -373,7 +373,7 @@ class Music(commands.Cog, name='음악'):
             return
         await ctx.send('강제 연결 해제가 완료되었습니다.')
 
-    @commands.command(name='볼륨', help='음악의 볼륨을 조절합니다.', description='음악의 볼륨을 조절합니다.', aliases=['volume'])
+    @commands.hybrid_command(name='볼륨', help='음악의 볼륨을 조절합니다.', description='음악의 볼륨을 조절합니다.', aliases=['volume'])
     @commands.guild_only()
     async def volume(self, ctx: commands.Context, vol: int | None = None) -> None:
         player = await self.ensure_voice(ctx, allow_paused=True)
@@ -395,7 +395,12 @@ class Music(commands.Cog, name='음악'):
             player.voice.source.volume = player.volume
         await ctx.send(f'{ctx.author.mention} 볼륨이 `{vol}%`로 변경되었습니다.')
 
-    @commands.command(name='대기리스트', help='현재 대기 리스트를 보여줍니다.', description='현재 대기 리스트를 보여줍니다.', aliases=['playlist'])
+    @commands.hybrid_command(
+        name='대기리스트',
+        help='현재 대기 리스트를 보여줍니다.',
+        description='현재 대기 리스트를 보여줍니다.',
+        aliases=['playlist'],
+    )
     @commands.guild_only()
     async def queue_list(self, ctx: commands.Context) -> None:
         player = self.get_player(ctx)
