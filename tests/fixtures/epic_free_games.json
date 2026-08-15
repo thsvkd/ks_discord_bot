@@ -1,0 +1,1299 @@
+{
+ "data": {
+  "Catalog": {
+   "searchStore": {
+    "elements": [
+     {
+      "title": "Cardpocalypse Standard Edition",
+      "id": "b467b7d3570e44c0b84e59475f4a5636",
+      "namespace": "2bfd5ca43ef443739ada168e017e1b78",
+      "description": "10살 소녀 Jess 때문에 Dudsdale Elementary 전교생이 즐겨하던 트레이딩 카드 게임이 교내에서 금지되었습니다. 그것도 Jess가 처음으로 이 학교에 등교한 날에 말이죠! 바로 그 때, 게임 카드 속에 있던 뮤턴트들이 현실 세계로 넘어와 버렸습니다. 이제 Jess와 친구들이 괴물들을 막아야 합니다. Mega Mutant Power Pets 마스터가 되어 학교를 구해야 합니다... 어쩌면 세계를 구해야 할지도 모르죠.",
+      "effectiveDate": "2019-09-13T06:00:00.000Z",
+      "offerType": "BASE_GAME",
+      "expiryDate": null,
+      "viewableDate": null,
+      "status": "ACTIVE",
+      "isCodeRedemptionOnly": false,
+      "keyImages": [
+       {
+        "type": "OfferImageTall",
+        "url": "https://cdn1.epicgames.com/offer/2bfd5ca43ef443739ada168e017e1b78/cards2_1200x1600-2e006bcbe82d7cf71d5102fc3566b7e5"
+       },
+       {
+        "type": "OfferImageWide",
+        "url": "https://cdn1.epicgames.com/offer/2bfd5ca43ef443739ada168e017e1b78/s1_2560x1440-8d68e37943d666ad0f05093481c4d7df"
+       },
+       {
+        "type": "Thumbnail",
+        "url": "https://cdn1.epicgames.com/offer/2bfd5ca43ef443739ada168e017e1b78/cards2_1200x1600-2e006bcbe82d7cf71d5102fc3566b7e5"
+       }
+      ],
+      "seller": {
+       "id": "o-u6n5zct3hl838grbqva2ahvlu5muh8",
+       "name": "Gambrinous"
+      },
+      "productSlug": "cardpocalypse/home",
+      "urlSlug": "cardpocalypsegeneralaudience",
+      "url": null,
+      "items": [
+       {
+        "id": "820c7dbae0954470a8d28aa1c80eef03",
+        "namespace": "2bfd5ca43ef443739ada168e017e1b78"
+       }
+      ],
+      "customAttributes": [
+       {
+        "key": "com.epicgames.app.blacklist",
+        "value": "{}"
+       },
+       {
+        "key": "publisherName",
+        "value": "Versus Evil"
+       },
+       {
+        "key": "developerName",
+        "value": "Gambrinous"
+       },
+       {
+        "key": "com.epicgames.app.productSlug",
+        "value": "cardpocalypse/home"
+       }
+      ],
+      "categories": [
+       {
+        "path": "freegames"
+       },
+       {
+        "path": "games"
+       },
+       {
+        "path": "games/edition"
+       },
+       {
+        "path": "games/edition/base"
+       },
+       {
+        "path": "applications"
+       }
+      ],
+      "tags": [
+       {
+        "id": "1367"
+       },
+       {
+        "id": "1370"
+       },
+       {
+        "id": "9547"
+       },
+       {
+        "id": "1181"
+       },
+       {
+        "id": "1263"
+       }
+      ],
+      "catalogNs": {
+       "mappings": [
+        {
+         "pageSlug": "cardpocalypse",
+         "pageType": "productHome"
+        }
+       ]
+      },
+      "offerMappings": [
+       {
+        "pageSlug": "cardpocalypse",
+        "pageType": "productHome"
+       }
+      ],
+      "price": {
+       "totalPrice": {
+        "discountPrice": 30000,
+        "originalPrice": 30000,
+        "voucherDiscount": 0,
+        "discount": 0,
+        "currencyCode": "KRW",
+        "currencyInfo": {
+         "decimals": 0
+        },
+        "fmtPrice": {
+         "originalPrice": "₩30,000",
+         "discountPrice": "₩30,000",
+         "intermediatePrice": "₩30,000"
+        },
+        "dualPrice": null
+       },
+       "lineOffers": [
+        {
+         "appliedRules": []
+        }
+       ]
+      },
+      "promotions": {
+       "promotionalOffers": [],
+       "upcomingPromotionalOffers": [
+        {
+         "promotionalOffers": [
+          {
+           "startDate": "2026-08-20T15:00:00.000Z",
+           "endDate": "2026-08-27T15:00:00.000Z",
+           "discountSetting": {
+            "discountType": "PERCENTAGE",
+            "discountPercentage": 0
+           }
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "title": "Them's Fightin' Herds",
+      "id": "1f723b00df58467998c4984ca39915ad",
+      "namespace": "a567c32599bf4d4fb609e424f3691b39",
+      "description": "Them's Fightin' Herds",
+      "effectiveDate": "2022-12-19T16:00:00.000Z",
+      "offerType": "BASE_GAME",
+      "expiryDate": null,
+      "viewableDate": "2022-12-19T15:55:00.000Z",
+      "status": "ACTIVE",
+      "isCodeRedemptionOnly": false,
+      "keyImages": [
+       {
+        "type": "featuredMedia",
+        "url": "https://cdn1.epicgames.com/offer/a567c32599bf4d4fb609e424f3691b39/EGS_ThemsFightinHerds_Mane6Inc_S1_2560x1440-da3a940faafe30c602d3966d2c295825"
+       },
+       {
+        "type": "OfferImageWide",
+        "url": "https://cdn1.epicgames.com/offer/a567c32599bf4d4fb609e424f3691b39/EGS_ThemsFightinHerds_Mane6Inc_S1_2560x1440-da3a940faafe30c602d3966d2c295825"
+       },
+       {
+        "type": "OfferImageTall",
+        "url": "https://cdn1.epicgames.com/offer/a567c32599bf4d4fb609e424f3691b39/EGS_ThemsFightinHerds_Mane6Inc_S2_1200x1600-9793ee024c43026c5c2b1612c7a487d0"
+       },
+       {
+        "type": "Thumbnail",
+        "url": "https://cdn1.epicgames.com/offer/a567c32599bf4d4fb609e424f3691b39/EGS_ThemsFightinHerds_Mane6Inc_S2_1200x1600-9793ee024c43026c5c2b1612c7a487d0_1200x1600-9793ee024c43026c5c2b1612c7a487d0"
+       }
+      ],
+      "seller": {
+       "id": "o-znrmullaj65y32mwjfa5dzabpprtmt",
+       "name": "Gameplay Group International Inc."
+      },
+      "productSlug": "thems-fightin-herds/home",
+      "urlSlug": "thems-fightin-herds",
+      "url": null,
+      "items": [
+       {
+        "id": "10deb2d9a2654231a12e24f8e58a446d",
+        "namespace": "a567c32599bf4d4fb609e424f3691b39"
+       }
+      ],
+      "customAttributes": [
+       {
+        "key": "autoGeneratedPrice",
+        "value": "false"
+       },
+       {
+        "key": "isManuallySetViewableDate",
+        "value": "true"
+       },
+       {
+        "key": "isPromotionalContentUsed",
+        "value": "false"
+       },
+       {
+        "key": "publisherName",
+        "value": "Maximum Entertainment LLC"
+       },
+       {
+        "key": "developerName",
+        "value": "Mane6"
+       },
+       {
+        "key": "isBlockchainUsed",
+        "value": "false"
+       },
+       {
+        "key": "com.epicgames.app.productSlug",
+        "value": "thems-fightin-herds/home"
+       }
+      ],
+      "categories": [
+       {
+        "path": "freegames"
+       },
+       {
+        "path": "games"
+       },
+       {
+        "path": "games/edition"
+       },
+       {
+        "path": "games/edition/base"
+       },
+       {
+        "path": "applications"
+       }
+      ],
+      "tags": [
+       {
+        "id": "1344"
+       },
+       {
+        "id": "29088"
+       },
+       {
+        "id": "21121"
+       },
+       {
+        "id": "21122"
+       },
+       {
+        "id": "1188"
+       },
+       {
+        "id": "21125"
+       },
+       {
+        "id": "19847"
+       },
+       {
+        "id": "21129"
+       },
+       {
+        "id": "9547"
+       },
+       {
+        "id": "1263"
+       },
+       {
+        "id": "21138"
+       },
+       {
+        "id": "21139"
+       },
+       {
+        "id": "21140"
+       },
+       {
+        "id": "21141"
+       },
+       {
+        "id": "1370"
+       },
+       {
+        "id": "21149"
+       },
+       {
+        "id": "21119"
+       }
+      ],
+      "catalogNs": {
+       "mappings": [
+        {
+         "pageSlug": "thems-fightin-herds",
+         "pageType": "productHome"
+        }
+       ]
+      },
+      "offerMappings": [
+       {
+        "pageSlug": "thems-fightin-herds",
+        "pageType": "productHome"
+       }
+      ],
+      "price": {
+       "totalPrice": {
+        "discountPrice": 20000,
+        "originalPrice": 20000,
+        "voucherDiscount": 0,
+        "discount": 0,
+        "currencyCode": "KRW",
+        "currencyInfo": {
+         "decimals": 0
+        },
+        "fmtPrice": {
+         "originalPrice": "₩20,000",
+         "discountPrice": "₩20,000",
+         "intermediatePrice": "₩20,000"
+        },
+        "dualPrice": null
+       },
+       "lineOffers": [
+        {
+         "appliedRules": []
+        }
+       ]
+      },
+      "promotions": null
+     },
+     {
+      "title": "Eternal Threads",
+      "id": "921e40c4c69f4d728914ca2a4f0aa407",
+      "namespace": "35eda4ff87f94a7491dc28175b8f3b4f",
+      "description": "Eternal Threads는 시간 조작과 선택, 그리고 이에 따른 결과에 관한 1인칭 스토리 전개 중심의 싱글 플레이어 퍼즐 게임입니다.",
+      "effectiveDate": "2023-10-19T15:00:00.000Z",
+      "offerType": "BASE_GAME",
+      "expiryDate": null,
+      "viewableDate": "2023-10-12T15:00:00.000Z",
+      "status": "ACTIVE",
+      "isCodeRedemptionOnly": false,
+      "keyImages": [
+       {
+        "type": "OfferImageWide",
+        "url": "https://cdn1.epicgames.com/spt-assets/08813e055af64315b8a55b2e521f4e04/eternal-threads-1vm6i.jpg"
+       },
+       {
+        "type": "OfferImageTall",
+        "url": "https://cdn1.epicgames.com/spt-assets/08813e055af64315b8a55b2e521f4e04/eternal-threads-1v92y.jpg"
+       },
+       {
+        "type": "Thumbnail",
+        "url": "https://cdn1.epicgames.com/spt-assets/08813e055af64315b8a55b2e521f4e04/eternal-threads-1v92y.jpg"
+       }
+      ],
+      "seller": {
+       "id": "o-rdrzv6e26usvcn4dsevv2mpfr4bytu",
+       "name": "Secret Mode Limited"
+      },
+      "productSlug": null,
+      "urlSlug": "a9152a8924cc4e438f0e61106ec02f7d",
+      "url": null,
+      "items": [
+       {
+        "id": "8963690b6659413e95e885f49fd92ea4",
+        "namespace": "35eda4ff87f94a7491dc28175b8f3b4f"
+       }
+      ],
+      "customAttributes": [
+       {
+        "key": "autoGeneratedPrice",
+        "value": "false"
+       },
+       {
+        "key": "isManuallySetViewableDate",
+        "value": "true"
+       },
+       {
+        "key": "isPromotionalContentUsed",
+        "value": "false"
+       },
+       {
+        "key": "isManuallySetPCReleaseDate",
+        "value": "true"
+       },
+       {
+        "key": "isBlockchainUsed",
+        "value": "false"
+       }
+      ],
+      "categories": [
+       {
+        "path": "freegames"
+       },
+       {
+        "path": "games"
+       },
+       {
+        "path": "games/edition"
+       },
+       {
+        "path": "games/edition/base"
+       }
+      ],
+      "tags": [
+       {
+        "id": "1298"
+       },
+       {
+        "id": "19847"
+       },
+       {
+        "id": "1370"
+       },
+       {
+        "id": "9547"
+       },
+       {
+        "id": "1117"
+       },
+       {
+        "id": "1263"
+       }
+      ],
+      "catalogNs": {
+       "mappings": [
+        {
+         "pageSlug": "eternal-threads-197169",
+         "pageType": "productHome"
+        }
+       ]
+      },
+      "offerMappings": [
+       {
+        "pageSlug": "eternal-threads-197169",
+        "pageType": "productHome"
+       }
+      ],
+      "price": {
+       "totalPrice": {
+        "discountPrice": 20400,
+        "originalPrice": 20400,
+        "voucherDiscount": 0,
+        "discount": 0,
+        "currencyCode": "KRW",
+        "currencyInfo": {
+         "decimals": 0
+        },
+        "fmtPrice": {
+         "originalPrice": "₩20,400",
+         "discountPrice": "₩20,400",
+         "intermediatePrice": "₩20,400"
+        },
+        "dualPrice": null
+       },
+       "lineOffers": [
+        {
+         "appliedRules": []
+        }
+       ]
+      },
+      "promotions": null
+     },
+     {
+      "title": "고스트러너 2",
+      "id": "be5600439b434624802764f704755cde",
+      "namespace": "708f57aaa04b42ef885be16c8288f0ac",
+      "description": "고스트러너 2는 포스트 아포칼립스 사이버펑크 세계관에서 펼쳐지는 하드코어 1인칭 슬래시 액션 명작입니다. 1편에서 호평을 받았던 요소들과 더불어 더 화려해진 보스전, 생동감 있는 스토리, 짜릿한 난이도의 모터바이크 스테이지, 한층 강력해진 닌자 액션을 만나보세요. ",
+      "effectiveDate": "2023-10-26T15:00:00.000Z",
+      "offerType": "BASE_GAME",
+      "expiryDate": null,
+      "viewableDate": "2023-10-26T15:00:00.000Z",
+      "status": "ACTIVE",
+      "isCodeRedemptionOnly": false,
+      "keyImages": [
+       {
+        "type": "OfferImageTall",
+        "url": "https://cdn1.epicgames.com/offer/708f57aaa04b42ef885be16c8288f0ac/EGS_Ghostrunner2_OneMoreLevel_S2_1200x1600-12ae7597b946ad94ac75680eb735be07"
+       },
+       {
+        "type": "OfferImageWide",
+        "url": "https://cdn1.epicgames.com/offer/708f57aaa04b42ef885be16c8288f0ac/EGS_Ghostrunner2_OneMoreLevel_S1_2560x1440-15845148fae1d0cfd7f3e98c9b3ba6ba"
+       },
+       {
+        "type": "Thumbnail",
+        "url": "https://cdn1.epicgames.com/offer/708f57aaa04b42ef885be16c8288f0ac/EGS_Ghostrunner2_OneMoreLevel_S2_1200x1600-12ae7597b946ad94ac75680eb735be07"
+       }
+      ],
+      "seller": {
+       "id": "o-cul2z53mrw3bxltv63v68rgd4b3w52",
+       "name": "505 Games"
+      },
+      "productSlug": "ghostrunner-2",
+      "urlSlug": "ghostrunner-2",
+      "url": null,
+      "items": [
+       {
+        "id": "b5644df892c8403ba6e18998565e75e5",
+        "namespace": "708f57aaa04b42ef885be16c8288f0ac"
+       }
+      ],
+      "customAttributes": [
+       {
+        "key": "com.epicgames.app.blacklist",
+        "value": "[]"
+       },
+       {
+        "key": "com.epicgames.app.productSlug",
+        "value": "ghostrunner-2"
+       }
+      ],
+      "categories": [
+       {
+        "path": "freegames"
+       },
+       {
+        "path": "games"
+       },
+       {
+        "path": "games/edition"
+       },
+       {
+        "path": "games/edition/base"
+       },
+       {
+        "path": "applications"
+       }
+      ],
+      "tags": [
+       {
+        "id": "1216"
+       },
+       {
+        "id": "21122"
+       },
+       {
+        "id": "21138"
+       },
+       {
+        "id": "21139"
+       },
+       {
+        "id": "21140"
+       },
+       {
+        "id": "21109"
+       },
+       {
+        "id": "21141"
+       },
+       {
+        "id": "21129"
+       },
+       {
+        "id": "1370"
+       },
+       {
+        "id": "9547"
+       },
+       {
+        "id": "1117"
+       },
+       {
+        "id": "21149"
+       }
+      ],
+      "catalogNs": {
+       "mappings": [
+        {
+         "pageSlug": "ghostrunner-2",
+         "pageType": "productHome"
+        }
+       ]
+      },
+      "offerMappings": [
+       {
+        "pageSlug": "ghostrunner-2",
+        "pageType": "productHome"
+       }
+      ],
+      "price": {
+       "totalPrice": {
+        "discountPrice": 40900,
+        "originalPrice": 40900,
+        "voucherDiscount": 0,
+        "discount": 0,
+        "currencyCode": "KRW",
+        "currencyInfo": {
+         "decimals": 0
+        },
+        "fmtPrice": {
+         "originalPrice": "₩40,900",
+         "discountPrice": "₩40,900",
+         "intermediatePrice": "₩40,900"
+        },
+        "dualPrice": null
+       },
+       "lineOffers": [
+        {
+         "appliedRules": []
+        }
+       ]
+      },
+      "promotions": {
+       "promotionalOffers": [],
+       "upcomingPromotionalOffers": [
+        {
+         "promotionalOffers": [
+          {
+           "startDate": "2026-09-10T17:00:00.000Z",
+           "endDate": "2026-09-24T17:00:00.000Z",
+           "discountSetting": {
+            "discountType": "PERCENTAGE",
+            "discountPercentage": 20
+           }
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "title": "Caravan SandWitch",
+      "id": "0e44600a079e419abbb291ccf5af9ee7",
+      "namespace": "45b137b2ecd14e01a54b52e575f1632d",
+      "description": "매혹적인 서사 중심의 탐험 어드벤처, Caravan SandWitch에서 광대한 풍경을 가로지르는 여정을 떠납니다.",
+      "effectiveDate": "2024-09-12T15:00:00.000Z",
+      "offerType": "BASE_GAME",
+      "expiryDate": null,
+      "viewableDate": "2024-09-05T12:08:00.000Z",
+      "status": "ACTIVE",
+      "isCodeRedemptionOnly": false,
+      "keyImages": [
+       {
+        "type": "OfferImageWide",
+        "url": "https://cdn1.epicgames.com/spt-assets/95b9a9a220e8483c8c1a70ad692de4b3/caravan-sandwitch-1uz0l.jpg"
+       },
+       {
+        "type": "OfferImageTall",
+        "url": "https://cdn1.epicgames.com/spt-assets/95b9a9a220e8483c8c1a70ad692de4b3/caravan-sandwitch-fku42.jpg"
+       },
+       {
+        "type": "Thumbnail",
+        "url": "https://cdn1.epicgames.com/spt-assets/95b9a9a220e8483c8c1a70ad692de4b3/caravan-sandwitch-fku42.jpg"
+       }
+      ],
+      "seller": {
+       "id": "o-yw5ga5z854qs64ld82qey3dz2d7z32",
+       "name": "Plug In Digital SAS"
+      },
+      "productSlug": null,
+      "urlSlug": "70e9a8a90305449a88a38b708399e605",
+      "url": null,
+      "items": [
+       {
+        "id": "be9a594fea474479b14c09d61c2f08bd",
+        "namespace": "45b137b2ecd14e01a54b52e575f1632d"
+       }
+      ],
+      "customAttributes": [
+       {
+        "key": "autoGeneratedPrice",
+        "value": "false"
+       },
+       {
+        "key": "isManuallySetViewableDate",
+        "value": "true"
+       },
+       {
+        "key": "isPromotionalContentUsed",
+        "value": "false"
+       },
+       {
+        "key": "isManuallySetPCReleaseDate",
+        "value": "false"
+       },
+       {
+        "key": "isBlockchainUsed",
+        "value": "false"
+       }
+      ],
+      "categories": [
+       {
+        "path": "freegames"
+       },
+       {
+        "path": "games"
+       },
+       {
+        "path": "games/edition"
+       },
+       {
+        "path": "games/edition/base"
+       }
+      ],
+      "tags": [
+       {
+        "id": "1296"
+       },
+       {
+        "id": "19847"
+       },
+       {
+        "id": "1370"
+       },
+       {
+        "id": "9547"
+       },
+       {
+        "id": "1117"
+       },
+       {
+        "id": "9549"
+       },
+       {
+        "id": "1263"
+       }
+      ],
+      "catalogNs": {
+       "mappings": [
+        {
+         "pageSlug": "caravan-sandwitch-05ff58",
+         "pageType": "productHome"
+        }
+       ]
+      },
+      "offerMappings": [
+       {
+        "pageSlug": "caravan-sandwitch-05ff58",
+        "pageType": "productHome"
+       }
+      ],
+      "price": {
+       "totalPrice": {
+        "discountPrice": 0,
+        "originalPrice": 32000,
+        "voucherDiscount": 0,
+        "discount": 32000,
+        "currencyCode": "KRW",
+        "currencyInfo": {
+         "decimals": 0
+        },
+        "fmtPrice": {
+         "originalPrice": "₩32,000",
+         "discountPrice": "0",
+         "intermediatePrice": "0"
+        },
+        "dualPrice": null
+       },
+       "lineOffers": [
+        {
+         "appliedRules": [
+          {
+           "id": "6f963d01472d4df7980ead43dfcfe91b",
+           "endDate": "2026-08-20T15:00:00.000Z",
+           "discountSetting": {
+            "discountType": "PERCENTAGE"
+           }
+          }
+         ]
+        }
+       ]
+      },
+      "promotions": {
+       "promotionalOffers": [
+        {
+         "promotionalOffers": [
+          {
+           "startDate": "2026-08-13T15:00:00.000Z",
+           "endDate": "2026-08-20T15:00:00.000Z",
+           "discountSetting": {
+            "discountType": "PERCENTAGE",
+            "discountPercentage": 0
+           }
+          }
+         ]
+        }
+       ],
+       "upcomingPromotionalOffers": []
+      }
+     },
+     {
+      "title": "Castlevania Anniversary Collection",
+      "id": "8f80897c0b6e4e678fed08da169d44be",
+      "namespace": "247d4d4b4e424afd9b474334fe450a43",
+      "description": "Konami's Castlevania Anniversary Collection traces the origins of the historic vampire franchise. Included is a unique eBook with details provided by developers, artists and others inspired by the Castlevania legacy which sheds a fresh light into the world of Castlevania.",
+      "effectiveDate": "2024-11-14T16:00:00.000Z",
+      "offerType": "BASE_GAME",
+      "expiryDate": null,
+      "viewableDate": "2024-11-07T05:00:00.000Z",
+      "status": "ACTIVE",
+      "isCodeRedemptionOnly": false,
+      "keyImages": [
+       {
+        "type": "OfferImageWide",
+        "url": "https://cdn1.epicgames.com/spt-assets/1ff2f74ba0ef4019b6905d8abe268819/castlevania-anniversary-collection-yex6f.jpg"
+       },
+       {
+        "type": "OfferImageTall",
+        "url": "https://cdn1.epicgames.com/spt-assets/1ff2f74ba0ef4019b6905d8abe268819/castlevania-anniversary-collection-z3ev6.png"
+       },
+       {
+        "type": "Thumbnail",
+        "url": "https://cdn1.epicgames.com/spt-assets/1ff2f74ba0ef4019b6905d8abe268819/castlevania-anniversary-collection-z3ev6.png"
+       }
+      ],
+      "seller": {
+       "id": "o-snd8ledlra6sytkbbve7h5uwuxuytv",
+       "name": "KONAMI"
+      },
+      "productSlug": null,
+      "urlSlug": "32b3e0adbe0c4399be1874958194f97f",
+      "url": null,
+      "items": [
+       {
+        "id": "05eab1bf838e446a89b59afd27e53273",
+        "namespace": "247d4d4b4e424afd9b474334fe450a43"
+       }
+      ],
+      "customAttributes": [
+       {
+        "key": "autoGeneratedPrice",
+        "value": "false"
+       },
+       {
+        "key": "isManuallySetViewableDate",
+        "value": "true"
+       },
+       {
+        "key": "isPromotionalContentUsed",
+        "value": "false"
+       },
+       {
+        "key": "isManuallySetPCReleaseDate",
+        "value": "true"
+       },
+       {
+        "key": "isBlockchainUsed",
+        "value": "false"
+       }
+      ],
+      "categories": [
+       {
+        "path": "freegames"
+       },
+       {
+        "path": "games"
+       },
+       {
+        "path": "games/edition"
+       },
+       {
+        "path": "games/edition/base"
+       }
+      ],
+      "tags": [
+       {
+        "id": "1216"
+       },
+       {
+        "id": "21121"
+       },
+       {
+        "id": "21122"
+       },
+       {
+        "id": "19847"
+       },
+       {
+        "id": "21129"
+       },
+       {
+        "id": "9547"
+       },
+       {
+        "id": "9549"
+       },
+       {
+        "id": "1198"
+       },
+       {
+        "id": "21138"
+       },
+       {
+        "id": "21139"
+       },
+       {
+        "id": "21140"
+       },
+       {
+        "id": "21109"
+       },
+       {
+        "id": "21141"
+       },
+       {
+        "id": "1370"
+       },
+       {
+        "id": "21149"
+       },
+       {
+        "id": "1151"
+       }
+      ],
+      "catalogNs": {
+       "mappings": [
+        {
+         "pageSlug": "castlevania-anniversary-collection-a61f94",
+         "pageType": "productHome"
+        }
+       ]
+      },
+      "offerMappings": [
+       {
+        "pageSlug": "castlevania-anniversary-collection-a61f94",
+        "pageType": "productHome"
+       }
+      ],
+      "price": {
+       "totalPrice": {
+        "discountPrice": 22600,
+        "originalPrice": 22600,
+        "voucherDiscount": 0,
+        "discount": 0,
+        "currencyCode": "KRW",
+        "currencyInfo": {
+         "decimals": 0
+        },
+        "fmtPrice": {
+         "originalPrice": "₩22,600",
+         "discountPrice": "₩22,600",
+         "intermediatePrice": "₩22,600"
+        },
+        "dualPrice": null
+       },
+       "lineOffers": [
+        {
+         "appliedRules": []
+        }
+       ]
+      },
+      "promotions": null
+     },
+     {
+      "title": "Monument Valley",
+      "id": "f967cff9761c4198b4e972cfd71e40d7",
+      "namespace": "e236e73a294b462d85715f5ba23a6346",
+      "description": "불가능한 환경과 환상적인 퍼즐 속에서 용서를 구하는 여정을 떠나세요. 모뉴먼트를 움직여 새롭고, 초현실적이고, 신비한 세계를 탐험하는 길을 만들어가며 몽환적이고 고요한 퍼즐 게임을 경험하세요.",
+      "effectiveDate": "2025-09-04T15:00:00.000Z",
+      "offerType": "BASE_GAME",
+      "expiryDate": null,
+      "viewableDate": "2025-08-28T15:00:00.000Z",
+      "status": "ACTIVE",
+      "isCodeRedemptionOnly": false,
+      "keyImages": [
+       {
+        "type": "OfferImageWide",
+        "url": "https://cdn1.epicgames.com/spt-assets/e56a7411805046d3b5b7253a6e4e0faa/monument-valley-1gys5.jpg"
+       },
+       {
+        "type": "OfferImageTall",
+        "url": "https://cdn1.epicgames.com/spt-assets/e56a7411805046d3b5b7253a6e4e0faa/monument-valley-bp09k.jpg"
+       },
+       {
+        "type": "Thumbnail",
+        "url": "https://cdn1.epicgames.com/spt-assets/e56a7411805046d3b5b7253a6e4e0faa/monument-valley-bp09k.jpg"
+       },
+       {
+        "type": "heroCarouselVideo",
+        "url": "com.epicgames.video://e2f4625d-33d9-428f-a50e-d6721fc00136?cover=https%3A%2F%2Fcdn1.epicgames.com%2Fspt-assets%2Fe56a7411805046d3b5b7253a6e4e0faa%2Fmonument-valley-video-war5h.jpg"
+       },
+       {
+        "type": "featuredMedia",
+        "url": "https://cdn1.epicgames.com/spt-assets/e56a7411805046d3b5b7253a6e4e0faa/monument-valley-ao6zf.jpg"
+       },
+       {
+        "type": "featuredMedia",
+        "url": "https://cdn1.epicgames.com/spt-assets/e56a7411805046d3b5b7253a6e4e0faa/monument-valley-1akji.jpg"
+       },
+       {
+        "type": "featuredMedia",
+        "url": "https://cdn1.epicgames.com/spt-assets/e56a7411805046d3b5b7253a6e4e0faa/monument-valley-715qo.jpg"
+       },
+       {
+        "type": "featuredMedia",
+        "url": "https://cdn1.epicgames.com/spt-assets/e56a7411805046d3b5b7253a6e4e0faa/monument-valley-1t8ws.jpg"
+       },
+       {
+        "type": "featuredMedia",
+        "url": "https://cdn1.epicgames.com/spt-assets/e56a7411805046d3b5b7253a6e4e0faa/monument-valley-rc6m0.jpg"
+       },
+       {
+        "type": "featuredMedia",
+        "url": "https://cdn1.epicgames.com/spt-assets/e56a7411805046d3b5b7253a6e4e0faa/monument-valley-1bmbs.jpg"
+       },
+       {
+        "type": "featuredMedia",
+        "url": "https://cdn1.epicgames.com/spt-assets/e56a7411805046d3b5b7253a6e4e0faa/monument-valley-yj45y.jpg"
+       },
+       {
+        "type": "featuredMedia",
+        "url": "https://cdn1.epicgames.com/spt-assets/e56a7411805046d3b5b7253a6e4e0faa/monument-valley-wiww5.jpg"
+       }
+      ],
+      "seller": {
+       "id": "o-dlp2t8d5tvq8kz8m6q6mltypw6c9am",
+       "name": "ustwo games"
+      },
+      "productSlug": null,
+      "urlSlug": "monument-valley-02",
+      "url": null,
+      "items": [
+       {
+        "id": "5c5c3efb40a44ddf9d4b845aee75e2a0",
+        "namespace": "e236e73a294b462d85715f5ba23a6346"
+       }
+      ],
+      "customAttributes": [
+       {
+        "key": "autoGeneratedPrice",
+        "value": "false"
+       },
+       {
+        "key": "isManuallySetViewableDate",
+        "value": "true"
+       },
+       {
+        "key": "isPromotionalContentUsed",
+        "value": "false"
+       },
+       {
+        "key": "isManuallySetPCReleaseDate",
+        "value": "true"
+       },
+       {
+        "key": "isBlockchainUsed",
+        "value": "false"
+       }
+      ],
+      "categories": [
+       {
+        "path": "freegames"
+       },
+       {
+        "path": "games"
+       },
+       {
+        "path": "games/edition"
+       },
+       {
+        "path": "games/edition/base"
+       }
+      ],
+      "tags": [
+       {
+        "id": "1296"
+       },
+       {
+        "id": "1298"
+       },
+       {
+        "id": "1370"
+       },
+       {
+        "id": "9547"
+       },
+       {
+        "id": "1117"
+       }
+      ],
+      "catalogNs": {
+       "mappings": [
+        {
+         "pageSlug": "monument-valley-1d99d3",
+         "pageType": "productHome"
+        }
+       ]
+      },
+      "offerMappings": [
+       {
+        "pageSlug": "monument-valley-1d99d3",
+        "pageType": "productHome"
+       }
+      ],
+      "price": {
+       "totalPrice": {
+        "discountPrice": 8900,
+        "originalPrice": 8900,
+        "voucherDiscount": 0,
+        "discount": 0,
+        "currencyCode": "KRW",
+        "currencyInfo": {
+         "decimals": 0
+        },
+        "fmtPrice": {
+         "originalPrice": "₩8,900",
+         "discountPrice": "₩8,900",
+         "intermediatePrice": "₩8,900"
+        },
+        "dualPrice": null
+       },
+       "lineOffers": [
+        {
+         "appliedRules": []
+        }
+       ]
+      },
+      "promotions": {
+       "promotionalOffers": [],
+       "upcomingPromotionalOffers": [
+        {
+         "promotionalOffers": [
+          {
+           "startDate": "2026-09-03T15:00:00.000Z",
+           "endDate": "2026-09-17T15:00:00.000Z",
+           "discountSetting": {
+            "discountType": "PERCENTAGE",
+            "discountPercentage": 25
+           }
+          }
+         ]
+        }
+       ]
+      }
+     },
+     {
+      "title": "에픽 메이지 번들",
+      "id": "a802acab90af4a07952a07a9fa677f2f",
+      "namespace": "72520902fc594621b6daa5a6217b4ee7",
+      "description": "$55 이상의 가치가 있는 마법 같은 무료 선물을 받아가세요! 마법이 깃든 명품 아이템, 두 가지 특별한 탈것 스킨, 그리고 성장에 필요한 풍성한 보상으로 알비온에서의 여정을 더욱 특별하게 만들어 보세요",
+      "effectiveDate": "2026-08-20T15:00:00.000Z",
+      "offerType": "ADD_ON",
+      "expiryDate": "2026-08-27T15:00:00.000Z",
+      "viewableDate": "2026-08-13T15:00:00.000Z",
+      "status": "ACTIVE",
+      "isCodeRedemptionOnly": false,
+      "keyImages": [
+       {
+        "type": "OfferImageWide",
+        "url": "https://cdn1.epicgames.com/spt-assets/92837229023341268267ff64cae425a5/albion-online-v5q98.png"
+       },
+       {
+        "type": "OfferImageTall",
+        "url": "https://cdn1.epicgames.com/spt-assets/92837229023341268267ff64cae425a5/albion-online-18emd.png"
+       },
+       {
+        "type": "Thumbnail",
+        "url": "https://cdn1.epicgames.com/spt-assets/92837229023341268267ff64cae425a5/albion-online-18emd.png"
+       },
+       {
+        "type": "featuredMedia",
+        "url": "https://cdn1.epicgames.com/spt-assets/92837229023341268267ff64cae425a5/albion-online-gwlyq.png"
+       }
+      ],
+      "seller": {
+       "id": "o-bqgxsskl6psb955j4pwt52muzt69yz",
+       "name": "Sandbox Interactive GmbH"
+      },
+      "productSlug": null,
+      "urlSlug": "epic-mage-bundle",
+      "url": null,
+      "items": [
+       {
+        "id": "acec73c5170c4051a7645129b41eac70",
+        "namespace": "72520902fc594621b6daa5a6217b4ee7"
+       }
+      ],
+      "customAttributes": [
+       {
+        "key": "isManuallySetRefundableType",
+        "value": "true"
+       },
+       {
+        "key": "autoGeneratedPrice",
+        "value": "false"
+       },
+       {
+        "key": "isManuallySetViewableDate",
+        "value": "true"
+       },
+       {
+        "key": "isPromotionalContentUsed",
+        "value": "false"
+       },
+       {
+        "key": "isManuallySetPCReleaseDate",
+        "value": "false"
+       },
+       {
+        "key": "isBlockchainUsed",
+        "value": "false"
+       }
+      ],
+      "categories": [
+       {
+        "path": "addons"
+       },
+       {
+        "path": "freegames"
+       },
+       {
+        "path": "addons/durable"
+       }
+      ],
+      "tags": [
+       {
+        "id": "29088"
+       },
+       {
+        "id": "1287"
+       },
+       {
+        "id": "1367"
+       },
+       {
+        "id": "22775"
+       },
+       {
+        "id": "22776"
+       },
+       {
+        "id": "9547"
+       },
+       {
+        "id": "1117"
+       },
+       {
+        "id": "9549"
+       },
+       {
+        "id": "10719"
+       }
+      ],
+      "catalogNs": {
+       "mappings": [
+        {
+         "pageSlug": "albion-online-7eb24d",
+         "pageType": "productHome"
+        }
+       ]
+      },
+      "offerMappings": [
+       {
+        "pageSlug": "albion-online-epic-mage-bundle-2ceb19",
+        "pageType": "offer"
+       }
+      ],
+      "price": {
+       "totalPrice": {
+        "discountPrice": 0,
+        "originalPrice": 0,
+        "voucherDiscount": 0,
+        "discount": 0,
+        "currencyCode": "KRW",
+        "currencyInfo": {
+         "decimals": 0
+        },
+        "fmtPrice": {
+         "originalPrice": "0",
+         "discountPrice": "0",
+         "intermediatePrice": "0"
+        },
+        "dualPrice": null
+       },
+       "lineOffers": [
+        {
+         "appliedRules": []
+        }
+       ]
+      },
+      "promotions": {
+       "promotionalOffers": [],
+       "upcomingPromotionalOffers": [
+        {
+         "promotionalOffers": [
+          {
+           "startDate": "2026-08-20T15:00:00.000Z",
+           "endDate": "2026-08-27T15:00:00.000Z",
+           "discountSetting": {
+            "discountType": "PERCENTAGE",
+            "discountPercentage": 0
+           }
+          }
+         ]
+        }
+       ]
+      }
+     }
+    ],
+    "paging": {
+     "count": 40,
+     "total": 8
+    }
+   }
+  }
+ }
+}

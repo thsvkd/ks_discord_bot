@@ -12,8 +12,13 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ks_bot.common.errors import ConfigError
+from ks_bot.common.giveaway import Store
 
 __all__ = ['PROJECT_ROOT', 'Settings', 'load_dotenv', 'parse_dotenv', 'read_env_text']
+
+# 무료 배포 알림에서 기본으로 다룰 스토어.
+# itch.io는 소규모 인디 무료 배포가 대량으로 올라와 알림이 묻히기 쉬워 기본값에서 제외한다.
+DEFAULT_GIVEAWAY_STORES = (Store.STEAM, Store.EPIC, Store.GOG)
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_ENV_FILE = PROJECT_ROOT / '.env'
@@ -79,6 +84,45 @@ def _env_int(name: str, default: int) -> int:
         raise ConfigError(f'환경 변수 {name}은(는) 정수여야 합니다. 현재 값: {raw!r}') from e
 
 
+_TRUE_VALUES = frozenset({'1', 'true', 'yes', 'y', 'on'})
+_FALSE_VALUES = frozenset({'0', 'false', 'no', 'n', 'off'})
+
+
+def _env_bool(name: str, default: bool) -> bool:
+    raw = _env_str(name).lower()
+    if not raw:
+        return default
+    if raw in _TRUE_VALUES:
+        return True
+    if raw in _FALSE_VALUES:
+        return False
+    raise ConfigError(f'환경 변수 {name}은(는) true/false여야 합니다. 현재 값: {raw!r}')
+
+
+def _env_stores(name: str, default: tuple[Store, ...]) -> tuple[Store, ...]:
+    """`steam,epic,gog` 형태의 목록을 파싱한다.
+
+    오타를 조용히 무시하면 알림이 통째로 사라지므로, 모르는 이름은 즉시 오류로 알린다.
+    """
+    raw = _env_str(name)
+    if not raw:
+        return default
+
+    stores: list[Store] = []
+    for token in raw.split(','):
+        name_token = token.strip().lower()
+        if not name_token:
+            continue
+        try:
+            store = Store(name_token)
+        except ValueError as e:
+            allowed = ', '.join(sorted(item.value for item in Store))
+            raise ConfigError(f'환경 변수 {name}에 알 수 없는 스토어가 있습니다: {name_token!r} (가능한 값: {allowed})') from e
+        if store not in stores:
+            stores.append(store)
+    return tuple(stores) or default
+
+
 @dataclass(frozen=True)
 class Settings:
     """봇 실행에 필요한 모든 설정값."""
@@ -93,6 +137,11 @@ class Settings:
     member_status_interval_minutes: int = 30
     max_match_num: int = 40
     player_cache_ttl_hours: int = 1
+    giveaway_channel_id: int = 0
+    giveaway_interval_minutes: int = 30
+    giveaway_stores: tuple[Store, ...] = DEFAULT_GIVEAWAY_STORES
+    giveaway_mention_role_id: int = 0
+    giveaway_include_upcoming: bool = True
 
     @classmethod
     def from_env(cls, *, require_discord_token: bool = True) -> Settings:
@@ -125,8 +174,17 @@ class Settings:
             member_status_interval_minutes=_env_int('KS_BOT_MEMBER_STATUS_INTERVAL_MINUTES', 30),
             max_match_num=_env_int('KS_BOT_MAX_MATCH_NUM', 40),
             player_cache_ttl_hours=_env_int('KS_BOT_PLAYER_CACHE_TTL_HOURS', 1),
+            giveaway_channel_id=_env_int('KS_BOT_GIVEAWAY_CHANNEL_ID', 0),
+            giveaway_interval_minutes=_env_int('KS_BOT_GIVEAWAY_INTERVAL_MINUTES', 30),
+            giveaway_stores=_env_stores('KS_BOT_GIVEAWAY_STORES', DEFAULT_GIVEAWAY_STORES),
+            giveaway_mention_role_id=_env_int('KS_BOT_GIVEAWAY_MENTION_ROLE_ID', 0),
+            giveaway_include_upcoming=_env_bool('KS_BOT_GIVEAWAY_INCLUDE_UPCOMING', True),
         )
 
     @property
     def has_pubg_token(self) -> bool:
         return bool(self.pubg_token)
+
+    @property
+    def has_giveaway_channel(self) -> bool:
+        return self.giveaway_channel_id > 0

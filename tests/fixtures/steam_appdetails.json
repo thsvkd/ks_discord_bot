@@ -1,0 +1,62 @@
+{
+ "214340": {
+  "success": true,
+  "data": {
+   "type": "game",
+   "name": "Deponia",
+   "steam_appid": 214340,
+   "is_free": true,
+   "short_description": "세계가 거대한 쓰레기장으로 변해 버린 데포니아에서, 짜증이 많은 루퍼스는 힘든 삶을 꾸역꾸역 이어 갑니다.",
+   "header_image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/214340/header.jpg?t=1785262567",
+   "price_overview": {
+    "currency": "KRW",
+    "initial": 1050000,
+    "final": 1050000,
+    "discount_percent": 100,
+    "initial_formatted": "₩ 10,500",
+    "final_formatted": "무료"
+   },
+   "metacritic": {
+    "score": 74,
+    "url": "https://www.metacritic.com/game/pc/deponia?ftag=MCD-06-10aaa1f"
+   },
+   "genres": [
+    {
+     "id": "25",
+     "description": "어드벤처"
+    },
+    {
+     "id": "23",
+     "description": "인디"
+    }
+   ],
+   "release_date": {
+    "coming_soon": false,
+    "date": "2012년 8월 6일"
+   }
+  }
+ },
+ "2015240": {
+  "success": true,
+  "data": {
+   "type": "game",
+   "name": "Dwarven Realms",
+   "steam_appid": 2015240,
+   "is_free": false,
+   "short_description": "거대한 몹 무리에 맞서 스크린을 아수라장으로 만드는 혼돈의 능력을 발휘하세요. 3D ARPG 중 가장 큰 몹의 무리에 뛰어들어 그들을 모두 처치하세요. 액션으로 가득한 ARPG 환경에서 강력한 힘을 휘두르고, 나만의 빌드를 만들고, 무한한 가능성의 세계를 만들어 보세요.",
+   "header_image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/2015240/header.jpg?t=1738315434",
+   "price_overview": {
+    "currency": "KRW",
+    "initial": 1100000,
+    "final": 1100000,
+    "discount_percent": 0,
+    "initial_formatted": "",
+    "final_formatted": "₩ 11,000"
+   },
+   "release_date": {
+    "coming_soon": false,
+    "date": "2024년 9월 27일"
+   }
+  }
+ }
+}
