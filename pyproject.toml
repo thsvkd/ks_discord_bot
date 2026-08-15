@@ -1,34 +1,34 @@
-[tool.poetry]
-name = "ks_bot"
+[project]
+name = "ks-bot"
 version = "0.2.0"
 description = "PUBG 전적 조회와 음악 재생을 지원하는 디스코드 봇"
-authors = ["thsvkd <thsxogud1123@gmail.com>"]
 readme = "README.md"
-packages = [{ include = "ks_bot" }]
+requires-python = ">=3.10"
+authors = [{ name = "thsvkd", email = "thsxogud1123@gmail.com" }]
+dependencies = [
+    "discord.py[voice]>=2.3",
+    "yt-dlp",
+    "youtube-search-python",
+    "termcolor",
+    "aiosqlite",
+    "aiohttp",
+    "aiohttp-retry",
+    # 윈도우에는 시스템 tz 데이터베이스가 없어 zoneinfo가 tzdata 패키지를 필요로 한다.
+    "tzdata; sys_platform == 'win32'",
+]
 
-[tool.poetry.dependencies]
-python = "^3.10"
-"discord.py" = { version = "^2.3", extras = ["voice"] }
-yt-dlp = "*"
-youtube-search-python = "*"
-termcolor = "*"
-# 윈도우에는 시스템 tz 데이터베이스가 없어 zoneinfo가 tzdata 패키지를 필요로 한다.
-tzdata = { version = "*", markers = "sys_platform == 'win32'" }
-aiosqlite = "*"
-aiohttp = "*"
-aiohttp_retry = "*"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^8.0"
-pytest-asyncio = "^0.23"
-ruff = "^0.5"
-
-[tool.poetry.scripts]
+[project.scripts]
 ks-bot = "ks_bot.__main__:main"
 
+[dependency-groups]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "ruff>=0.5"]
+
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["ks_bot"]
 
 [tool.pytest.ini_options]
 minversion = "8.0"
@@ -39,11 +39,16 @@ asyncio_mode = "auto"
 markers = [
     "network: 외부 네트워크(PUBG/YouTube API)가 필요한 테스트 (`-m 'not network'`로 제외)",
 ]
+filterwarnings = [
+    # discord.py 내부에서 발생하는 표준 라이브러리 deprecation 경고는 우리가 고칠 수 없다.
+    "ignore:'audioop' is deprecated:DeprecationWarning",
+    "ignore:'asyncio.iscoroutinefunction' is deprecated:DeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 150
 target-version = "py310"
-extend-exclude = [".venv", "poetry.lock"]
+extend-exclude = [".venv"]
 
 [tool.ruff.lint]
 select = [

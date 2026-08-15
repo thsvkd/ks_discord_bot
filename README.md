@@ -26,23 +26,27 @@ PUBG 전적 기반 **전투력(점수) 측정**과 **유튜브 음악 재생**�
 
 ### 2-1. 요구사항
 
-- Python 3.10 이상
+- [uv](https://docs.astral.sh/uv/) — 파이썬 버전과 의존성을 함께 관리합니다
 - [ffmpeg](https://ffmpeg.org/) (음악 재생에 필요)
-- [Poetry](https://python-poetry.org/) (권장) 또는 pip
+
+Python은 따로 설치하지 않아도 됩니다. `uv`가 `requires-python`(3.10+)에 맞는 인터프리터를 자동으로 준비합니다.
+
+uv 설치:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh     # macOS / Linux
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"   # Windows
+```
 
 ### 2-2. 설치
 
 ```bash
-# Poetry 사용 시
-poetry install
-
-# 또는 venv + pip
-python -m venv .venv
-source .venv/bin/activate      # Windows: .venv\Scripts\activate
-pip install "discord.py[voice]" yt-dlp youtube-search-python termcolor aiosqlite aiohttp aiohttp_retry tzdata
+uv sync     # .venv 생성 + uv.lock 기준으로 의존성 설치
 ```
 
-ffmpeg 설치:
+`setup.sh`를 실행하면 ffmpeg 설치와 `.env` 생성까지 한 번에 처리합니다.
+
+ffmpeg를 직접 설치할 경우:
 
 ```bash
 sudo apt install ffmpeg -y          # Debian/Ubuntu
@@ -72,11 +76,13 @@ export DISCORD_TOKEN="your_token_here"
 ### 2-4. 실행
 
 ```bash
-python -m ks_bot     # 권장
+uv run ks-bot        # 권장
 # 또는
-python main.py
+uv run python -m ks_bot
 ./run.sh
 ```
+
+> 가상환경을 직접 활성화했다면(`source .venv/bin/activate`) `python -m ks_bot`으로도 실행됩니다.
 
 ---
 
@@ -133,7 +139,7 @@ python main.py
 레포에 포함된 스크립트로 봇 토큰과 채널 ID가 올바른지 바로 검증할 수 있습니다.
 
 ```bash
-python scripts/send_message.py --channel-id 1234567890123456789 --message "봇 연결 테스트 ✅"
+uv run python scripts/send_message.py --channel-id 1234567890123456789 --message "봇 연결 테스트 ✅"
 ```
 
 - 토큰은 `DISCORD_TOKEN` 환경 변수(또는 `.env`)에서 읽습니다. `--token`으로 직접 넘길 수도 있습니다.
@@ -202,13 +208,19 @@ ks_bot/
 ## 8. 개발
 
 ```bash
-pytest                      # 전체 테스트 (네트워크 테스트는 자동 스킵)
-pytest -m "not network"     # 네트워크 테스트 명시적 제외
-PUBG_TOKEN=... pytest -m network   # 실제 PUBG API 통합 테스트
+uv run pytest                       # 전체 테스트 (네트워크 테스트는 자동 스킵)
+uv run pytest -m "not network"      # 네트워크 테스트 명시적 제외
+PUBG_TOKEN=... uv run pytest -m network   # 실제 PUBG API 통합 테스트
 
-ruff check .                # 린트
-ruff format .               # 포맷
+uv run ruff check .                 # 린트
+uv run ruff format .                # 포맷
+
+uv add <패키지>                      # 의존성 추가 (pyproject + uv.lock 갱신)
+uv add --dev <패키지>                # 개발 의존성 추가
+uv lock --upgrade                   # 잠긴 버전 일괄 업그레이드
 ```
+
+`uv.lock`은 저장소에 커밋되어 있으므로, 모든 환경과 CI가 완전히 동일한 버전으로 실행됩니다.
 
 - 단위 테스트는 외부 네트워크에 접속하지 않습니다. HTTP 클라이언트 테스트는 로컬 aiohttp 테스트 서버를 띄웁니다.
 - `PUBG_TOKEN`이 설정된 경우에만 `network` 마커 테스트가 실행됩니다.
