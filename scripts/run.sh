@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 if command -v uv >/dev/null 2>&1; then
     exec uv run ks-bot

@@ -58,7 +58,7 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"   # Windows
 uv sync     # .venv 생성 + uv.lock 기준으로 의존성 설치
 ```
 
-`setup.sh`를 실행하면 ffmpeg 설치와 `.env` 생성까지 한 번에 처리합니다.
+`./scripts/setup.sh`를 실행하면 ffmpeg 설치와 `.env` 생성까지 한 번에 처리합니다.
 
 ffmpeg를 직접 설치할 경우:
 
@@ -89,14 +89,42 @@ export DISCORD_TOKEN="your_token_here"
 
 ### 2-4. 실행
 
+개발 중에는 호스트에서 바로 띄웁니다.
+
 ```bash
 uv run ks-bot        # 권장
 # 또는
 uv run python -m ks_bot
-./run.sh
+./scripts/run.sh
 ```
 
 > 가상환경을 직접 활성화했다면(`source .venv/bin/activate`) `python -m ks_bot`으로도 실행됩니다.
+
+이 머신에 상시 띄울 때는 코레일/클록 봇과 같이 컨테이너로 돌립니다. 재부팅 후에도 다시 올라오고, SQLite 전적은 `./res`에 남습니다. 디스코드 게이트웨이만 붙으므로 호스트에 열 포트는 없습니다.
+
+```bash
+./scripts/server.sh start          # 없으면 이미지 빌드 후 기동
+./scripts/server.sh status
+./scripts/server.sh logs -f
+./scripts/server.sh restart        # 코드/설정 반영
+./scripts/server.sh stop
+```
+
+같은 토큰으로 호스트 프로세스와 컨테이너를 동시에 띄우면 안 됩니다. `start`는 호스트에서 돌던 `ks-bot`을 먼저 종료합니다.
+
+### 2-5. 서버 상태 확인
+
+컨테이너 수명주기는 `server.sh status`가, 디스코드 쪽 점검은 `status.py`가 담당합니다.
+
+```bash
+./scripts/server.sh status                    # 컨테이너 · 가동시간 · 재시작 횟수
+uv run python scripts/status.py               # 호스트 · 설정 · 디스코드 REST
+uv run python scripts/status.py --local       # 디스코드 API 없이 로컬만
+uv run python scripts/status.py --check       # 봇이 없거나 디스코드 조회 실패 시 종료 코드 1
+uv run python scripts/status.py --guild-id <서버ID>
+```
+
+`status.py`는 REST만 호출하고 게이트웨이에는 붙지 않습니다. 이미 떠 있는 봇 세션을 끊지 않습니다.
 
 ---
 
@@ -264,6 +292,15 @@ ks_bot/
 │   └── youtube.py      #   유튜브 검색/메타데이터
 └── cogs/               # 디스코드 커맨드 (모듈 추가 시 자동 로드)
     ├── balancer.py  game.py  giveaway.py  msg.py  music.py  user.py
+scripts/
+├── server.sh              # 컨테이너 수명주기 (start/stop/status/logs)
+├── _common.sh             # server.sh 가 쓰는 공통 헬퍼
+├── run.sh                 # 호스트에서 uv run ks-bot
+├── setup.sh               # ffmpeg / uv / .env 준비
+├── status.py              # 호스트·설정·디스코드 REST 상태
+├── send_message.py        # 채널 테스트 메시지
+└── preview_giveaways.py   # 무료 배포 미리보기
+Dockerfile / docker-compose.yml   # 상시 실행용 이미지
 ```
 
 **계층 규칙**: `cogs` → `core` → `common` 방향으로만 의존합니다.

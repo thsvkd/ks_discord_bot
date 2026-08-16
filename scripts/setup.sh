@@ -2,7 +2,7 @@
 # 개발/실행 환경을 준비한다. (Debian/Ubuntu 기준)
 set -euo pipefail
 
-cd "$(dirname "$0")"
+cd "$(dirname "$0")/.."
 
 echo '==> ffmpeg 설치 (음악 재생에 필요)'
 if command -v apt >/dev/null 2>&1; then
@@ -25,4 +25,4 @@ if [ ! -f .env ]; then
     echo '==> .env 파일을 생성했습니다. DISCORD_TOKEN 값을 채워주세요.'
 fi
 
-echo '==> 완료. 실행: uv run ks-bot'
+echo '==> 완료. 실행: uv run ks-bot  또는  ./scripts/run.sh'

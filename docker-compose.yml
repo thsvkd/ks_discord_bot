@@ -1,0 +1,41 @@
+services:
+  app:
+    # 이 체크아웃에서 직접 빌드한다. 봇 토큰을 쥐고 도는 프로세스를
+    # 남이 통제하는 이미지로 돌리는 것을 기본값으로 삼지 않는다.
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PYTHON_VERSION: ${PYTHON_VERSION:-3.13}
+        UV_VERSION: ${UV_VERSION:-0.9}
+    image: ${IMAGE_NAME:-ksbot:local}
+    container_name: ${APP_CONTAINER_NAME:-ks_bot}
+
+    # 설정은 전부 .env 하나에서 온다. 로컬(`uv run ks-bot`)과 같은 파일을 읽는다.
+    env_file:
+      - ${BOT_ENV_FILE:-.env}
+
+    environment:
+      - TZ=${CONTAINER_TZ:-Asia/Seoul}
+      - PYTHONUNBUFFERED=1
+      # 패키지가 site-packages 에 설치되므로, 경로를 여기서 못 박는다.
+      # .env 의 상대경로(res/history.db)가 이미지 안 엉뚱한 곳으로 풀리지 않게 한다.
+      - KS_BOT_DB_PATH=/app/res/history.db
+      - KS_BOT_GAME_RESULT_DIR=/app/res/game_result
+
+    volumes:
+      # 이름 있는 볼륨이 아니라 bind mount. SQLite 와 전적이 눈에 보이는
+      # 경로에 남고, `docker compose down --volumes` 로도 지워지지 않는다.
+      - ${BOT_DATA_DIR:-./res}:/app/res
+
+    restart: unless-stopped
+
+    # 디스코드 게이트웨이만 붙는다. 호스트에 열 포트는 없다.
+    # 프로세스가 죽으면 컨테이너가 죽고 restart 정책이 되살린다.
+    stop_grace_period: 20s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
