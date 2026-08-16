@@ -2,13 +2,17 @@
 
 from __future__ import annotations
 
+import functools
 import pkgutil
+from collections import deque
+from datetime import datetime, timedelta
 
 import discord
 from discord.ext import commands
 
 import ks_bot.cogs as cogs_package
 from ks_bot.common.errors import KSBotError
+from ks_bot.common.timeutil import datetime_now
 from ks_bot.config import Settings
 from ks_bot.help_command import CustomHelpCommand, register_help_app_command
 from ks_bot.logging_config import get_logger
@@ -16,6 +20,13 @@ from ks_bot.logging_config import get_logger
 __all__ = ['KSBot', 'build_intents']
 
 logger = get_logger(__name__)
+
+#: 중복 인스턴스 판별을 위해 기억해 둘 최근 전송 메시지 수.
+#: 커맨드 하나가 여러 메시지를 보내기도 하므로 넉넉하게 잡는다.
+SENT_ID_MEMORY = 256
+
+#: 같은 경고를 매 메시지마다 찍으면 로그가 묻힌다.
+DUPLICATE_WARNING_INTERVAL = timedelta(minutes=10)
 
 
 def build_intents() -> discord.Intents:
@@ -44,6 +55,63 @@ class KSBot(commands.Bot):
             **kwargs,
         )
         self.settings = settings
+        self._sent_message_ids: deque[int] = deque(maxlen=SENT_ID_MEMORY)
+        self._last_duplicate_warning: datetime | None = None
+        self._track_sent_messages()
+
+    # ---------- 중복 인스턴스 감지 ----------
+
+    def _track_sent_messages(self) -> None:
+        """이 프로세스가 보낸 메시지의 ID를 기억해 둔다.
+
+        같은 토큰으로 봇을 두 벌 띄우면 두 인스턴스가 모두 커맨드에 응답해서
+        모든 메시지가 두 번 나간다. 실제로 그런 적이 있었고, 원인이 코드에 있는지
+        인스턴스에 있는지 가리는 데 반나절이 걸렸다. 내가 보낸 것을 알고 있으면
+        "내 계정인데 내가 보내지 않은 메시지"를 보고 즉시 알아챌 수 있다.
+        """
+        original = self.http.send_message
+
+        @functools.wraps(original)
+        async def tracked(*args, **kwargs):
+            data = await original(*args, **kwargs)
+            try:
+                self._sent_message_ids.append(int(data['id']))
+            except (KeyError, TypeError, ValueError):
+                # ID를 못 읽어도 전송 자체는 성공했다. 감지만 포기한다.
+                logger.debug('전송한 메시지의 ID를 읽지 못했습니다.')
+            return data
+
+        self.http.send_message = tracked
+
+    def _is_from_another_instance(self, message: discord.Message) -> bool:
+        """내 계정이 보냈지만 이 프로세스가 보내지 않은 메시지인지."""
+        if self.user is None or message.author.id != self.user.id:
+            return False
+        if message.id in self._sent_message_ids:
+            return False
+        # 슬래시 응답과 웹훅 전송은 전송 시점에 ID를 돌려받지 못해 내 것과 구분되지 않는다.
+        return message.interaction_metadata is None and message.webhook_id is None
+
+    def _warn_duplicate_instance(self, message: discord.Message) -> None:
+        """중복 인스턴스 경고. 메시지마다 찍으면 로그가 묻히므로 간격을 둔다."""
+        now = datetime_now()
+        if self._last_duplicate_warning is not None and now - self._last_duplicate_warning < DUPLICATE_WARNING_INTERVAL:
+            return
+
+        self._last_duplicate_warning = now
+        logger.warning(
+            '같은 봇 계정으로 도는 다른 인스턴스가 있는 것 같습니다. '
+            '내가 보내지 않은 내 메시지를 발견했습니다. message_id=%s, channel_id=%s. '
+            '같은 DISCORD_TOKEN을 쓰는 프로세스를 하나만 남겨주세요.',
+            message.id,
+            getattr(message.channel, 'id', '?'),
+        )
+
+    async def on_message(self, message: discord.Message) -> None:
+        if self._is_from_another_instance(message):
+            self._warn_duplicate_instance(message)
+        # 봇이 보낸 메시지는 `process_commands`가 알아서 무시한다.
+        await self.process_commands(message)
 
     async def setup_hook(self) -> None:
         await self.load_all_extensions()

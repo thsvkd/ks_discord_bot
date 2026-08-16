@@ -6,7 +6,13 @@
 
 from __future__ import annotations
 
-from ks_bot.bot import KSBot, build_intents
+import functools
+import logging
+from types import SimpleNamespace
+
+import pytest
+
+from ks_bot.bot import SENT_ID_MEMORY, KSBot, build_intents
 from ks_bot.config import Settings
 
 #: 커맨드는 카테고리 그룹 아래로 묶여 있으므로 전체 경로로 확인한다.
@@ -72,3 +78,85 @@ class TestExtensionLoading:
         await bot.unload_extension('ks_bot.cogs.balancer')
 
         assert cog.balancer.repository.is_connected is False
+
+
+class TestDuplicateInstanceDetection:
+    """같은 토큰으로 봇을 두 벌 띄우면 모든 커맨드가 두 번 응답한다.
+
+    실제로 겪었고, 원인이 코드인지 인스턴스인지 가리는 데 오래 걸렸다.
+    """
+
+    BOT_ID = 1122923125630304396
+
+    def make_message(self, bot: KSBot, *, message_id: int, author_id: int, interaction: object = None, webhook_id: int | None = None):
+        bot._connection.user = SimpleNamespace(id=self.BOT_ID, bot=True)
+        return SimpleNamespace(
+            id=message_id,
+            author=SimpleNamespace(id=author_id, bot=True),
+            channel=SimpleNamespace(id=999),
+            interaction_metadata=interaction,
+            webhook_id=webhook_id,
+        )
+
+    def test_my_own_message_is_not_flagged(self, bot: KSBot):
+        bot._sent_message_ids.append(555)
+        message = self.make_message(bot, message_id=555, author_id=self.BOT_ID)
+
+        assert bot._is_from_another_instance(message) is False
+
+    def test_message_from_another_instance_is_flagged(self, bot: KSBot):
+        """내 계정이 보냈는데 내가 보낸 기록이 없다 = 다른 인스턴스."""
+        message = self.make_message(bot, message_id=777, author_id=self.BOT_ID)
+
+        assert bot._is_from_another_instance(message) is True
+
+    def test_other_users_are_ignored(self, bot: KSBot):
+        message = self.make_message(bot, message_id=777, author_id=1234)
+
+        assert bot._is_from_another_instance(message) is False
+
+    def test_slash_response_is_not_flagged(self, bot: KSBot):
+        """슬래시 응답은 전송 시점에 ID를 돌려받지 못해 내 것과 구분되지 않는다."""
+        message = self.make_message(bot, message_id=777, author_id=self.BOT_ID, interaction=object())
+
+        assert bot._is_from_another_instance(message) is False
+
+    def test_webhook_message_is_not_flagged(self, bot: KSBot):
+        message = self.make_message(bot, message_id=777, author_id=self.BOT_ID, webhook_id=42)
+
+        assert bot._is_from_another_instance(message) is False
+
+    def test_warning_is_rate_limited(self, bot: KSBot, caplog: pytest.LogCaptureFixture):
+        """메시지마다 찍으면 로그가 묻힌다."""
+        message = self.make_message(bot, message_id=777, author_id=self.BOT_ID)
+
+        with caplog.at_level(logging.WARNING):
+            bot._warn_duplicate_instance(message)
+            bot._warn_duplicate_instance(message)
+
+        assert sum('다른 인스턴스' in record.message for record in caplog.records) == 1
+
+    async def test_sent_ids_are_recorded_on_send(self, bot: KSBot):
+        """`http.send_message`를 감싸 모든 전송 경로를 한 곳에서 기록한다."""
+
+        async def fake_send(*args, **kwargs):
+            return {'id': '12345'}
+
+        # 래퍼는 `__init__`에서 이미 걸려 있다. 그 안쪽만 가짜로 바꾼다.
+        bot._sent_message_ids.clear()
+        original = bot.http.send_message
+        bot.http.send_message = functools.wraps(fake_send)(fake_send)
+        bot._track_sent_messages()
+        try:
+            await bot.http.send_message(1)
+        finally:
+            bot.http.send_message = original
+
+        assert 12345 in bot._sent_message_ids
+
+    def test_memory_is_bounded(self, bot: KSBot):
+        """오래 돌아도 메모리가 무한히 늘지 않아야 한다."""
+        for index in range(SENT_ID_MEMORY * 2):
+            bot._sent_message_ids.append(index)
+
+        assert len(bot._sent_message_ids) == SENT_ID_MEMORY
